@@ -7,6 +7,6 @@ void main() {
     await tester.pumpWidget(const DrivingGuideApp());
 
     expect(find.text('Real-Time Roadside Audio Guide'), findsOneWidget);
-    expect(find.text('Status'), findsOneWidget);
+    expect(find.text('Current Area'), findsOneWidget);
   });
 }

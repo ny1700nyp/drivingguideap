@@ -28,8 +28,10 @@
 	<true/>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Driving Guide uses your location while driving to detect city and county changes and play local audio guidance.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Driving Guide uses background location while you drive so local audio guidance can continue when the screen is off or another app is visible.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Driving Guide uses your location to provide local history, seasonal produce, and market notes for your current area.</string>
+	<string>Driving Guide uses your location to provide cinematic local history, landmarks, scenic viewpoints, and famous-figure stories for your current area.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

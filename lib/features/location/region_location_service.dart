@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
@@ -11,7 +12,8 @@ class RegionLocationService {
   final Duration pollInterval;
   final _regionChanges = StreamController<RegionSnapshot>.broadcast();
 
-  Timer? _timer;
+  StreamSubscription<Position>? _positionSubscription;
+  DateTime? _lastGeocodeAt;
   RegionSnapshot? _lastRegion;
 
   Stream<RegionSnapshot> get regionChanges => _regionChanges.stream;
@@ -19,15 +21,34 @@ class RegionLocationService {
 
   Future<void> start() async {
     await _ensureLocationReady();
+    await stop();
     await checkNow();
-    _timer?.cancel();
-    _timer = Timer.periodic(pollInterval, (_) => checkNow());
+    _positionSubscription =
+        Geolocator.getPositionStream(
+          locationSettings: _backgroundLocationSettings(),
+        ).listen(
+          (position) => unawaited(_handlePosition(position)),
+          onError: _regionChanges.addError,
+        );
   }
 
   Future<void> checkNow() async {
     final position = await Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(accuracy: LocationAccuracy.best),
     );
+    await _handlePosition(position, force: true);
+  }
+
+  Future<void> _handlePosition(Position position, {bool force = false}) async {
+    final now = DateTime.now();
+    final lastGeocodeAt = _lastGeocodeAt;
+    if (!force &&
+        lastGeocodeAt != null &&
+        now.difference(lastGeocodeAt) < pollInterval) {
+      return;
+    }
+
+    _lastGeocodeAt = now;
     final placemarks = await placemarkFromCoordinates(
       position.latitude,
       position.longitude,
@@ -40,7 +61,7 @@ class RegionLocationService {
     final snapshot = RegionSnapshot.fromPlacemark(
       placemark: placemarks.first,
       position: position,
-      recordedAt: DateTime.now(),
+      recordedAt: now,
     );
 
     if (_lastRegion?.regionKey == snapshot.regionKey) {
@@ -53,8 +74,8 @@ class RegionLocationService {
   }
 
   Future<void> stop() async {
-    _timer?.cancel();
-    _timer = null;
+    await _positionSubscription?.cancel();
+    _positionSubscription = null;
   }
 
   Future<void> dispose() async {
@@ -73,6 +94,10 @@ class RegionLocationService {
       permission = await Geolocator.requestPermission();
     }
 
+    if (permission == LocationPermission.whileInUse) {
+      permission = await Geolocator.requestPermission();
+    }
+
     if (permission == LocationPermission.denied) {
       throw PermissionDeniedException('Location permission was denied.');
     }
@@ -82,5 +107,38 @@ class RegionLocationService {
         'Location permission is permanently denied. Enable it in Settings.',
       );
     }
+  }
+
+  LocationSettings _backgroundLocationSettings() {
+    if (Platform.isIOS || Platform.isMacOS) {
+      return AppleSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 500,
+        pauseLocationUpdatesAutomatically: false,
+        activityType: ActivityType.automotiveNavigation,
+        allowBackgroundLocationUpdates: true,
+        showBackgroundLocationIndicator: true,
+      );
+    }
+
+    if (Platform.isAndroid) {
+      return AndroidSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 500,
+        intervalDuration: pollInterval,
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationTitle: 'Driving Guide is active',
+          notificationText:
+              'Listening for city and county changes during your drive.',
+          notificationChannelName: 'Driving Guide Location',
+          setOngoing: true,
+        ),
+      );
+    }
+
+    return LocationSettings(
+      accuracy: LocationAccuracy.best,
+      distanceFilter: 500,
+    );
   }
 }
