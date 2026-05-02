@@ -164,13 +164,21 @@ class InferenceEngine {
           '${factLines.join(' ')}';
     }
 
-    final cityIntroMatch = RegExp(
-      r'traveling through ([^\.\n]+)',
-      caseSensitive: false,
-    ).firstMatch(prompt);
+    final cityIntroMatch =
+        RegExp(r'City:\s*([^\n]+)', caseSensitive: false).firstMatch(prompt) ??
+        RegExp(r'도시:\s*([^\n]+)').firstMatch(prompt) ??
+        RegExp(r'都市:\s*([^\n]+)').firstMatch(prompt) ??
+        RegExp(r'城市:\s*([^\n]+)').firstMatch(prompt) ??
+        RegExp(r'Stadt:\s*([^\n]+)').firstMatch(prompt) ??
+        RegExp(r'Ville:\s*([^\n]+)').firstMatch(prompt) ??
+        RegExp(
+          r'traveling through ([^\.\n]+)',
+          caseSensitive: false,
+        ).firstMatch(prompt);
     final cityName = cityIntroMatch?.group(1)?.trim();
     if (cityName != null && cityName.isNotEmpty) {
-      return 'As you travel through $cityName, let the city open like a brief roadside documentary: its streets, older landmarks, and surrounding landscape all hint at the people who shaped it and the stories still moving through it today.';
+      final outputLanguage = _fallbackOutputLanguage(prompt);
+      return _fallbackCityIntro(cityName, outputLanguage);
     }
 
     final apiContext = RegExp(
@@ -188,6 +196,62 @@ class InferenceEngine {
         .take(5)
         .join(' ');
     return lines;
+  }
+
+  String _fallbackOutputLanguage(String prompt) {
+    final explicit =
+        RegExp(
+          r'Output language:\s*([^\n]+)',
+          caseSensitive: false,
+        ).firstMatch(prompt)?.group(1)?.trim() ??
+        RegExp(r'출력 언어:\s*([^\n]+)').firstMatch(prompt)?.group(1)?.trim() ??
+        RegExp(r'出力言語:\s*([^\n]+)').firstMatch(prompt)?.group(1)?.trim() ??
+        RegExp(r'输出语言:\s*([^\n]+)').firstMatch(prompt)?.group(1)?.trim() ??
+        RegExp(r'Idioma de salida:\s*([^\n]+)').firstMatch(prompt)?.group(1)?.trim() ??
+        RegExp(r'Ausgabesprache:\s*([^\n]+)').firstMatch(prompt)?.group(1)?.trim() ??
+        RegExp(r'Langue de sortie:\s*([^\n]+)').firstMatch(prompt)?.group(1)?.trim();
+    final normalized = explicit?.toLowerCase();
+    if (normalized == null) {
+      return 'English';
+    }
+    if (normalized.contains('한국') || normalized.contains('korean')) {
+      return 'Korean';
+    }
+    if (normalized.contains('日本') || normalized.contains('japanese')) {
+      return 'Japanese';
+    }
+    if (normalized.contains('中文') || normalized.contains('chinese')) {
+      return 'Chinese';
+    }
+    if (normalized.contains('español') || normalized.contains('spanish')) {
+      return 'Spanish';
+    }
+    if (normalized.contains('deutsch') || normalized.contains('german')) {
+      return 'German';
+    }
+    if (normalized.contains('français') || normalized.contains('french')) {
+      return 'French';
+    }
+    return 'English';
+  }
+
+  String _fallbackCityIntro(String cityName, String outputLanguage) {
+    return switch (outputLanguage.toLowerCase()) {
+      'korean' =>
+        '$cityName을 지나며, 이 도시는 잠깐 스쳐 가는 지명이 아니라 하나의 짧은 로드 다큐멘터리처럼 펼쳐집니다. 거리의 형태와 오래된 랜드마크, 주변의 자연 풍경은 이곳이 어떤 산업과 사람들, 어떤 이동의 흐름 속에서 성장해 왔는지를 조용히 보여줍니다. 창밖으로 보이는 평범한 건물과 도로도 사실은 지역의 기억을 품고 있고, 그 사이로 축제, 음식, 동네의 이름 같은 작은 단서들이 도시의 성격을 만들어 냅니다. 지금 이 순간에는 목적지보다, 이 도시가 남긴 흔적을 천천히 지나가며 발견하는 시간이 더 오래 기억될지도 모릅니다.',
+      'japanese' =>
+        '$cityNameを通り抜けると、この街は短いロードドキュメンタリーのように姿を見せます。古い通りやランドマーク、周囲の風景が、この場所を形づくった人々と今も続く物語を語っています。',
+      'chinese' =>
+        '当你经过$cityName时，这座城市像一段短小的公路纪录片般展开。街道、旧地标和周围景观，都在暗示塑造这里的人们以及仍在延续的故事。',
+      'spanish' =>
+        'Al pasar por $cityName, la ciudad se abre como un breve documental de carretera: sus calles, antiguos lugares emblemáticos y paisajes cercanos insinúan a las personas que la moldearon y las historias que aún la recorren.',
+      'german' =>
+        'Während du durch $cityName fährst, öffnet sich die Stadt wie eine kurze Straßendokumentation: ihre Straßen, älteren Wahrzeichen und die umliegende Landschaft erzählen von den Menschen, die sie geprägt haben, und von Geschichten, die bis heute weiterleben.',
+      'french' =>
+        'En traversant $cityName, la ville s’ouvre comme un bref documentaire de route : ses rues, ses anciens repères et le paysage alentour évoquent les personnes qui l’ont façonnée et les histoires qui continuent d’y circuler.',
+      _ =>
+        'As you travel through $cityName, let the city open like a brief roadside documentary: its streets, older landmarks, and surrounding landscape all hint at the people who shaped it and the stories still moving through it today.',
+    };
   }
 
   List<Map<String, String>> _fallbackEntities(String narration) {

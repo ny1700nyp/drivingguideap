@@ -66,6 +66,8 @@ class ContextualGuideService {
 
   Future<GuideContent> buildGuide(
     RegionSnapshot region, {
+    required String narrativeStyle,
+    required String outputLanguage,
     GuidePipelineListener? onPipelineEvent,
   }) async {
     return buildGuideForRegionName(
@@ -73,6 +75,8 @@ class ContextualGuideService {
       speedMph: region.speedMph,
       latitude: region.position.latitude,
       longitude: region.position.longitude,
+      narrativeStyle: narrativeStyle,
+      outputLanguage: outputLanguage,
       onPipelineEvent: onPipelineEvent,
     );
   }
@@ -80,6 +84,8 @@ class ContextualGuideService {
   Future<GuideContent> buildGuideForRegionName({
     required String regionName,
     required double speedMph,
+    required String narrativeStyle,
+    required String outputLanguage,
     double? latitude,
     double? longitude,
     GuidePipelineListener? onPipelineEvent,
@@ -111,6 +117,8 @@ class ContextualGuideService {
     );
     final introPrompt = _promptBuilder.buildTravelingCityIntroPrompt(
       cityName: regionName,
+      narrativeStyle: narrativeStyle,
+      outputLanguage: outputLanguage,
     );
     _emit(
       onPipelineEvent,

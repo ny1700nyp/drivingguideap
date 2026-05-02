@@ -39,6 +39,28 @@ class RegionLocationService {
     await _handlePosition(position, force: true);
   }
 
+  Future<RegionSnapshot> currentRegionSnapshot() async {
+    await _ensureLocationReady();
+    final position = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.best),
+    );
+    final now = DateTime.now();
+    final placemarks = await placemarkFromCoordinates(
+      position.latitude,
+      position.longitude,
+    );
+
+    if (placemarks.isEmpty) {
+      throw StateError('Could not determine the current town.');
+    }
+
+    return RegionSnapshot.fromPlacemark(
+      placemark: placemarks.first,
+      position: position,
+      recordedAt: now,
+    );
+  }
+
   Future<void> _handlePosition(Position position, {bool force = false}) async {
     final now = DateTime.now();
     final lastGeocodeAt = _lastGeocodeAt;
@@ -76,6 +98,8 @@ class RegionLocationService {
   Future<void> stop() async {
     await _positionSubscription?.cancel();
     _positionSubscription = null;
+    _lastGeocodeAt = null;
+    _lastRegion = null;
   }
 
   Future<void> dispose() async {
@@ -127,10 +151,10 @@ class RegionLocationService {
         distanceFilter: 500,
         intervalDuration: pollInterval,
         foregroundNotificationConfig: const ForegroundNotificationConfig(
-          notificationTitle: 'Driving Guide is active',
+          notificationTitle: 'Twingl Road is active',
           notificationText:
               'Listening for city and county changes during your drive.',
-          notificationChannelName: 'Driving Guide Location',
+          notificationChannelName: 'Twingl Road Location',
           setOngoing: true,
         ),
       );

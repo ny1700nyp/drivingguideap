@@ -23,7 +23,7 @@ class TtsVoice {
     return normalized.isEmpty ? 'default' : normalized.toLowerCase();
   }
 
-  String get displayName => '$name ($locale, $qualityLabel)';
+  String get displayName => name;
   bool get isPremium => quality.toLowerCase() == 'premium';
   bool get isEnhanced => quality.toLowerCase() == 'enhanced';
   bool get isPreferredQuality => isPremium || isEnhanced;

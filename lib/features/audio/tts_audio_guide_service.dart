@@ -1,16 +1,34 @@
+import 'dart:async';
+
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
 import '../../models/tts_voice.dart';
 
+class SpeakingRange {
+  const SpeakingRange({
+    required this.start,
+    required this.end,
+    required this.word,
+  });
+
+  final int start;
+  final int end;
+  final String word;
+}
+
 class TtsAudioGuideService {
   TtsAudioGuideService({FlutterTts? tts}) : _tts = tts ?? FlutterTts();
 
   final FlutterTts _tts;
+  final _speakingRangeController = StreamController<SpeakingRange?>.broadcast();
   bool _configured = false;
   TtsVoice? _selectedVoice;
+  String _defaultLanguage = 'en-US';
+  int _speakingOffset = 0;
 
   TtsVoice? get selectedVoice => _selectedVoice;
+  Stream<SpeakingRange?> get speakingRanges => _speakingRangeController.stream;
 
   Future<void> configure() async {
     if (_configured) {
@@ -33,7 +51,7 @@ class TtsAudioGuideService {
       ),
     );
 
-    await _tts.setLanguage('en-US');
+    await _tts.setLanguage(_defaultLanguage);
     if (_selectedVoice != null) {
       await _tts.setVoice(_selectedVoice!.toFlutterTtsVoice());
     }
@@ -41,6 +59,24 @@ class TtsAudioGuideService {
     await _tts.setPitch(1);
     await _tts.setVolume(1);
     await _tts.awaitSpeakCompletion(true);
+    _tts.setProgressHandler((text, start, end, word) {
+      _speakingRangeController.add(
+        SpeakingRange(
+          start: start + _speakingOffset,
+          end: end + _speakingOffset,
+          word: word,
+        ),
+      );
+    });
+    _tts.setCompletionHandler(() {
+      _speakingRangeController.add(null);
+    });
+    _tts.setCancelHandler(() {
+      _speakingRangeController.add(null);
+    });
+    _tts.setErrorHandler((_) {
+      _speakingRangeController.add(null);
+    });
     _configured = true;
   }
 
@@ -78,11 +114,18 @@ class TtsAudioGuideService {
     return parsedVoices;
   }
 
+  Future<void> setDefaultLanguage(String language) async {
+    _defaultLanguage = language;
+    if (_configured && _selectedVoice == null) {
+      await _tts.setLanguage(_defaultLanguage);
+    }
+  }
+
   Future<void> selectVoice(TtsVoice? voice) async {
     _selectedVoice = voice;
     await configure();
     if (voice == null) {
-      await _tts.setLanguage('en-US');
+      await _tts.setLanguage(_defaultLanguage);
       return;
     }
     await _tts.setVoice(voice.toFlutterTtsVoice());
@@ -97,17 +140,77 @@ class TtsAudioGuideService {
     final session = await AudioSession.instance;
     await session.setActive(true);
 
-    try {
-      await _tts.stop();
-      await _tts.speak(text);
-    } finally {
-      await session.setActive(false);
+    await _speakSegment(text: text, offset: 0, stopFirst: true);
+    await session.setActive(false);
+  }
+
+  Future<void> speakFrom(String text, int startIndex) async {
+    final safeStart = _nearestWordStart(text, startIndex);
+    if (safeStart >= text.length) {
+      return;
     }
+    await configure();
+    final session = await AudioSession.instance;
+    await session.setActive(true);
+    await _speakSegment(
+      text: text.substring(safeStart),
+      offset: safeStart,
+      stopFirst: true,
+    );
+    await session.setActive(false);
   }
 
   Future<void> stop() async {
     await _tts.stop();
+    _speakingOffset = 0;
+    _speakingRangeController.add(null);
     final session = await AudioSession.instance;
     await session.setActive(false);
+  }
+
+  Future<void> _speakSegment({
+    required String text,
+    required int offset,
+    required bool stopFirst,
+  }) async {
+    try {
+      if (stopFirst) {
+        await _tts.stop();
+      }
+      _speakingOffset = offset;
+      await _tts.speak(text);
+    } finally {
+      _speakingOffset = 0;
+    }
+  }
+
+  int _nearestWordStart(String text, int index) {
+    if (text.trim().isEmpty) {
+      return text.length;
+    }
+    var safeIndex = index.clamp(0, text.length).toInt();
+    while (safeIndex > 0 && !_isBoundary(text.codeUnitAt(safeIndex - 1))) {
+      safeIndex--;
+    }
+    while (safeIndex < text.length && text.codeUnitAt(safeIndex) == 32) {
+      safeIndex++;
+    }
+    return safeIndex;
+  }
+
+  bool _isBoundary(int codeUnit) {
+    return codeUnit == 32 ||
+        codeUnit == 10 ||
+        codeUnit == 9 ||
+        codeUnit == 45 ||
+        codeUnit == 46 ||
+        codeUnit == 44 ||
+        codeUnit == 59 ||
+        codeUnit == 58;
+  }
+
+  Future<void> dispose() async {
+    await stop();
+    await _speakingRangeController.close();
   }
 }

@@ -1,0 +1,90 @@
+{
+  "@@locale": "en",
+  "appTitle": "Twingl Road",
+  "loadingVoices": "Loading voices...",
+  "systemDefaultEnglishVoice": "Using the system default voice.",
+  "voiceLoadError": "Could not load voices: {error}",
+  "@voiceLoadError": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "voiceAvailabilityStatus": "{count} premium/enhanced voice(s) available. Selected: {quality}.",
+  "@voiceAvailabilityStatus": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "quality": {}
+    }
+  },
+  "usingVoice": "Using {voiceName}.",
+  "@usingVoice": {
+    "placeholders": {
+      "voiceName": {}
+    }
+  },
+  "startGuidingDialogTitle": "Start Guiding?",
+  "startGuidingDialogMessage": "Guiding active. I'll automatically introduce each new town's history, landmarks, and local flavors as you enter.",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "fullNarrative": "Full Narrative",
+  "noLocationYet": "No location yet",
+  "currentArea": "Current area",
+  "startAreaMonitoringPlaceholder": "Start area monitoring.",
+  "startGuiding": "Start Guiding",
+  "pauseGuide": "Pause Guide",
+  "checkThisTown": "Check This Town",
+  "startTestRoute": "Start Sacramento to Seattle Test Route",
+  "stopTestRoute": "Stop Test Route",
+  "prevStop": "Prev Stop",
+  "nextStop": "Next Stop",
+  "heritage": "Heritage",
+  "heritageBody": "Name origin and the story that shaped {areaName}.",
+  "@heritageBody": {
+    "placeholders": {
+      "areaName": {}
+    }
+  },
+  "icons": "Icons",
+  "iconsBody": "Famous people and local episodes connected to this place.",
+  "views": "Views",
+  "viewsBody": "Scenic viewpoints and beautiful short detours nearby.",
+  "bites": "Bites",
+  "bitesBody": "A local food or drink stop worth remembering.",
+  "goods": "Goods",
+  "goodsBody": "Seasonal products, wine, beer, seafood, or agriculture.",
+  "trivia": "Trivia",
+  "triviaBody": "Film locations, festivals, events, and small local surprises.",
+  "digitalMagazine": "Digital Magazine",
+  "detailsIntro": "Pull over and explore the deeper story behind {areaName}.",
+  "@detailsIntro": {
+    "placeholders": {
+      "areaName": {}
+    }
+  },
+  "relatedLinks": "Related Links",
+  "personaSettings": "Persona Settings",
+  "narrativeStyle": "Narrative style",
+  "cinematicStoryteller": "Cinematic storyteller",
+  "localHistorian": "Local historian",
+  "friendlyRoadCompanion": "Friendly road companion",
+  "voiceSettings": "Voice Settings",
+  "firstLlmPrompt": "First LLM Prompt",
+  "noFirstLlmPrompt": "No first LLM prompt generated yet.",
+  "liveGuide": "Live Guide",
+  "details": "Details",
+  "more": "More",
+  "cruisingTowardsNextDiscovery": "Cruising towards the next discovery.",
+  "liveNarrative": "Live Narrative",
+  "expandNarrative": "Expand narrative",
+  "pause": "Pause",
+  "resume": "Resume",
+  "replay": "Replay",
+  "thinking": "Thinking",
+  "noRelatedLinks": "No related links prepared yet.",
+  "voice": "Voice",
+  "systemDefault": "System default",
+  "moreVoice": "More voice?",
+  "moreVoiceDescription": "You can add new voices in Settings > Accessibility > Read & Speak > Voices."
+}
