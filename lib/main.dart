@@ -461,23 +461,6 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   static const _voicePreferenceKey = 'tts_voice_id';
   static const _systemVoicePreferenceValue = 'system-default';
 
-  static const _sacramentoToSeattleRoute = [
-    'Sacramento, California',
-    'Woodland, California',
-    'Redding, California',
-    'Mount Shasta, California',
-    'Ashland, Oregon',
-    'Medford, Oregon',
-    'Roseburg, Oregon',
-    'Eugene, Oregon',
-    'Salem, Oregon',
-    'Portland, Oregon',
-    'Vancouver, Washington',
-    'Olympia, Washington',
-    'Tacoma, Washington',
-    'Seattle, Washington',
-  ];
-
   final _locationService = RegionLocationService();
   final _contextualGuideService = ContextualGuideService();
   final _dynamicTextService = const DynamicGuideTextService();
@@ -491,7 +474,6 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   List<TtsVoice> _voices = const [];
   TtsVoice? _selectedVoice;
   String _voiceStatus = '';
-  String _firstLlmInput = '';
   String _preparedTtsText = '';
   SpeakingRange? _currentSpeakingRange;
   String _narrativeStyle = 'Storyteller';
@@ -500,25 +482,16 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   String? _magazineHistorySelectionKey;
   String? _loadedVoiceLocalePrefix;
   List<GuideLink> _guideLinks = const [];
-  String? _currentTestStop;
   bool _isMonitoring = false;
-  bool _isTestRouteRunning = false;
-  bool _isTestRouteSpeaking = false;
   bool _isPlaybackPaused = false;
   bool _isPlaybackCompleted = false;
   bool _isAiThinking = false;
-  bool _showTestRouteControls = false;
-  bool _showFirstLlmDebug = false;
   bool _showOnDeviceNarrationNotice = false;
   /// Before first [ContextualGuideService.getModelInfo], prefer full [RegionSnapshot.displayName].
   /// When true (native on-device LLM unavailable), prompts and UI use primary city label only.
   bool? _compactPlaceLabelsForDevice;
   bool _isIntroductionExpanded = false;
   int _selectedTabIndex = 0;
-  int _liveGuideTapCount = 0;
-  int _moreTapCount = 0;
-  int _testRouteIndex = 0;
-  int _testRouteRunId = 0;
   int _playbackRunId = 0;
   int _resumeSpeakingIndex = 0;
 
@@ -965,7 +938,6 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
     }
 
     try {
-      await _stopTestRoute();
       await _ttsService.configure();
       unawaited(OfflineCityLookup.instance.preload());
       setState(() {
@@ -1032,17 +1004,11 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   }
 
   Future<void> _checkThisTown() async {
-    if (_isTestRouteRunning) {
-      return;
-    }
-
     _playbackRunId++;
     await _ttsService.stop();
     try {
       await _ttsService.configure();
       setState(() {
-        _firstLlmInput = '';
-        _currentTestStop = null;
         _preparedTtsText = '';
         _currentSpeakingRange = null;
         _guideLinks = const [];
@@ -1064,143 +1030,6 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
     }
   }
 
-  Future<void> _startTestRoute() async {
-    if (_isTestRouteRunning) {
-      return;
-    }
-
-    if (_isMonitoring) {
-      await _locationService.stop();
-    }
-
-    setState(() {
-      _isMonitoring = false;
-      _isTestRouteRunning = true;
-      _testRouteIndex = 0;
-      _currentRegion = null;
-      _currentTestStop = null;
-      _firstLlmInput = '';
-      _preparedTtsText = '';
-      _currentSpeakingRange = null;
-      _guideLinks = const [];
-      _isAiThinking = false;
-      _isPlaybackPaused = false;
-      _isPlaybackCompleted = false;
-    });
-
-    await _runNextTestRouteStop();
-  }
-
-  Future<void> _stopTestRoute() async {
-    if (!mounted) {
-      return;
-    }
-    _testRouteRunId++;
-    _playbackRunId++;
-    await _ttsService.stop();
-    setState(() {
-      _isTestRouteRunning = false;
-      _isTestRouteSpeaking = false;
-      _currentTestStop = null;
-      _isAiThinking = false;
-      _isPlaybackPaused = false;
-      _isPlaybackCompleted = false;
-    });
-  }
-
-  Future<void> _runNextTestRouteStop() async {
-    if (!_isTestRouteRunning ||
-        _testRouteIndex >= _sacramentoToSeattleRoute.length) {
-      return;
-    }
-
-    await _runTestRouteStopAt(_testRouteIndex);
-  }
-
-  Future<void> _runPreviousTestRouteStop() async {
-    if (!_isTestRouteRunning || _testRouteIndex <= 1) {
-      return;
-    }
-
-    final currentIndex = (_testRouteIndex - 1).clamp(
-      0,
-      _sacramentoToSeattleRoute.length - 1,
-    );
-    final previousIndex = (currentIndex - 1).clamp(
-      0,
-      _sacramentoToSeattleRoute.length - 1,
-    );
-    await _runTestRouteStopAt(previousIndex);
-  }
-
-  Future<void> _runTestRouteStopAt(int index) async {
-    if (!_isTestRouteRunning ||
-        index < 0 ||
-        index >= _sacramentoToSeattleRoute.length) {
-      return;
-    }
-
-    final runId = ++_testRouteRunId;
-    _playbackRunId++;
-    final outputLang = _llmOutputLanguage();
-    final weatherUsesImperialUnits = _localeUsesMiles(context);
-    await _ttsService.stop();
-    final stop = _sacramentoToSeattleRoute[index];
-    _testRouteIndex = index + 1;
-
-    setState(() {
-      _currentTestStop = stop;
-      _firstLlmInput = '';
-      _preparedTtsText = '';
-      _currentSpeakingRange = null;
-      _guideLinks = const [];
-      _isAiThinking = false;
-      _isPlaybackPaused = false;
-      _isPlaybackCompleted = false;
-      _isTestRouteSpeaking = true;
-    });
-
-    try {
-      if (_compactPlaceLabelsForDevice == null) {
-        try {
-          final info = await _contextualGuideService.getModelInfo();
-          _compactPlaceLabelsForDevice = info.usesFallback;
-        } catch (_) {
-          _compactPlaceLabelsForDevice = true;
-        }
-      }
-      final guide = await _contextualGuideService.buildGuideForRegionName(
-        regionName: _compactPlaceLabelsForDevice == true
-            ? stop.split(',').first.trim()
-            : stop,
-        speedMph: 35,
-        narrativeStyle: _narrativeStyle,
-        outputLanguage: outputLang,
-        weatherUsesImperialUnits: weatherUsesImperialUnits,
-        customPersonasById: _customPersonasForPrompt(),
-        onPipelineEvent: _handlePipelineEvent,
-      );
-      if (!mounted || runId != _testRouteRunId) {
-        return;
-      }
-      final text = _dynamicTextService.selectText(guide: guide);
-      _setGuideOutput(
-        text: text,
-        links: guide.links,
-        guideForHistory: guide,
-      );
-      final playbackRunId = _beginPlayback();
-      await _ttsService.speak(text);
-      _completePlayback(playbackRunId);
-    } finally {
-      if (mounted && runId == _testRouteRunId) {
-        setState(() {
-          _isTestRouteSpeaking = false;
-        });
-      }
-    }
-  }
-
   Future<void> _handleRegionChange(RegionSnapshot region) async {
     if (_compactPlaceLabelsForDevice == null) {
       try {
@@ -1218,10 +1047,6 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
       if (label != null && label.isNotEmpty) {
         _lastResolvedAreaLabel = label;
       }
-      if (!_isTestRouteRunning) {
-        _currentTestStop = null;
-      }
-      _firstLlmInput = '';
       _preparedTtsText = '';
       _currentSpeakingRange = null;
       _guideLinks = const [];
@@ -1363,13 +1188,12 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   }
 
   void _handlePipelineEvent(GuidePipelineEvent event) {
-    if (event.payload == null || !mounted) {
+    if (!mounted) {
       return;
     }
 
     if (event.message == 'First LLM city intro prompt is ready.') {
       setState(() {
-        _firstLlmInput = event.payload!;
         _isAiThinking = true;
       });
     } else if (event.message == 'Proper noun extraction received.') {
@@ -1510,13 +1334,6 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   }
 
   String _currentAreaName() {
-    final testStop = _currentTestStop;
-    if (testStop != null) {
-      return _compactPlaceLabelsForDevice == true
-          ? testStop.split(',').first.trim()
-          : testStop;
-    }
-
     final region = _currentRegion;
     if (region == null) {
       return _lastResolvedAreaLabel ?? _l10n.noLocationYet;
@@ -1657,8 +1474,6 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
     if (e != null && e.cityName.trim().isNotEmpty) {
       return e.cityName.trim();
     }
-    final testStop = _currentTestStop;
-    if (testStop != null) return testStop;
     final region = _currentRegion;
     if (region != null) {
       if (_compactPlaceLabelsForDevice == true) {
@@ -1683,7 +1498,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   }
 
   bool _hasCurrentArea() {
-    return _currentTestStop != null || _currentRegion != null;
+    return _currentRegion != null;
   }
 
   Widget _buildLiveGuideTab(BuildContext context) {
@@ -1710,8 +1525,8 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
           speakingRange: _currentSpeakingRange,
           isThinking: _isAiThinking,
           isSpeaking:
-              _isTestRouteSpeaking || _currentSpeakingRange != null,
-          isMonitoring: _isMonitoring || _isTestRouteRunning,
+              _currentSpeakingRange != null,
+          isMonitoring: _isMonitoring,
           isPaused: _isPlaybackPaused,
           isCompleted: _isPlaybackCompleted,
           onTogglePlayback: hasNarrative ? _togglePlayback : null,
@@ -1722,7 +1537,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
         ),
         const SizedBox(height: 16),
         FilledButton.icon(
-          onPressed: _isMonitoring || _isTestRouteRunning
+          onPressed: _isMonitoring
               ? null
               : () => _confirmStartGuiding(context),
           icon: const Icon(Icons.navigation),
@@ -1736,49 +1551,10 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
         ),
         const SizedBox(height: 8),
         FilledButton.tonalIcon(
-          onPressed: _isTestRouteRunning || _isAiThinking ? null : _checkThisTown,
+          onPressed: _isAiThinking ? null : _checkThisTown,
           icon: const Icon(Icons.my_location),
           label: Text(l10n.checkThisTown),
         ),
-        if (_showTestRouteControls) ...[
-          const SizedBox(height: 16),
-          FilledButton.tonalIcon(
-            onPressed: _isTestRouteRunning ? null : _startTestRoute,
-            icon: const Icon(Icons.route),
-            label: Text(l10n.startTestRoute),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: _isTestRouteRunning ? _stopTestRoute : null,
-            icon: const Icon(Icons.pause_circle),
-            label: Text(l10n.stopTestRoute),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _isTestRouteRunning && _testRouteIndex > 1
-                      ? _runPreviousTestRouteStop
-                      : null,
-                  icon: const Icon(Icons.skip_previous),
-                  label: Text(l10n.prevStop),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _isTestRouteRunning &&
-                          _testRouteIndex < _sacramentoToSeattleRoute.length
-                      ? _runNextTestRouteStop
-                      : null,
-                  icon: const Icon(Icons.skip_next),
-                  label: Text(l10n.nextStop),
-                ),
-              ),
-            ],
-          ),
-        ],
       ],
     );
   }
@@ -2083,17 +1859,6 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
             onChanged: _selectVoice,
           ),
         ),
-        if (_showFirstLlmDebug) ...[
-          const SizedBox(height: 12),
-          _StatusCard(
-            title: l10n.firstLlmPrompt,
-            child: SelectableText(
-              _firstLlmInput.trim().isEmpty
-                  ? l10n.noFirstLlmPrompt
-                  : _firstLlmInput,
-            ),
-          ),
-        ],
         const SizedBox(height: 12),
         _StatusCard(
           title: l10n.clearRouteHistoryTitle,
@@ -2166,36 +1931,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
         selectedIndex: _selectedTabIndex,
         onDestinationSelected: (index) {
           if (index == 1 && !canOpenMagazine) {
-            _liveGuideTapCount = 0;
-            _moreTapCount = 0;
             return;
-          }
-
-          if (index == 0) {
-            _liveGuideTapCount++;
-            _moreTapCount = 0;
-            if (_liveGuideTapCount >= 10) {
-              _liveGuideTapCount = 0;
-              setState(() {
-                _showTestRouteControls = !_showTestRouteControls;
-                _selectedTabIndex = index;
-              });
-              return;
-            }
-          } else if (index == 2) {
-            _moreTapCount++;
-            _liveGuideTapCount = 0;
-            if (_moreTapCount >= 10) {
-              _moreTapCount = 0;
-              setState(() {
-                _showFirstLlmDebug = !_showFirstLlmDebug;
-                _selectedTabIndex = index;
-              });
-              return;
-            }
-          } else {
-            _liveGuideTapCount = 0;
-            _moreTapCount = 0;
           }
           setState(() => _selectedTabIndex = index);
         },
