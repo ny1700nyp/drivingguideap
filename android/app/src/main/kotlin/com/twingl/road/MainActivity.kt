@@ -1,4 +1,4 @@
-package com.drivingguide.drivingguide
+package com.twingl.road
 
 import com.google.mlkit.genai.common.DownloadStatus
 import com.google.mlkit.genai.common.FeatureStatus
