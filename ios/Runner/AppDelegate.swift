@@ -229,9 +229,8 @@ private final class FoundationModelsTextGenerator {
     case .available:
       if session == nil {
         session = LanguageModelSession(instructions: """
-        You are a captivating, cinematic documentary narrator speaking to a driver.
-        Blend the precision of a historian with the emotional pull of a passionate
-        storyteller. Speak only as finished roadside narration for in-car audio.
+        You are a narrator speaking to a driver.
+        Speak only as finished roadside narration for in-car audio.
         Keep responses concise, immersive, and grounded. Never ask how you can help.
         Never say you are an assistant. Never output labels, markdown, or meta
         commentary.

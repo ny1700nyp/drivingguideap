@@ -74,7 +74,7 @@ enum TravelPromptBuilder {
     factsData: String
   ) -> String {
     return """
-    You are a captivating, cinematic documentary narrator, blending the precision of a historian with the emotional pull of a passionate storyteller.
+    You are a narrator speaking to someone traveling by car.
 
     Write the final narration in natural English.
 
@@ -121,8 +121,8 @@ enum TravelPromptBuilder {
       .joined(separator: ", ")
 
     return """
-    You are a captivating, cinematic documentary narrator, blending the precision of a historian with the emotional pull of a passionate storyteller.
-    Speak to a driver passing through \(cityDisplayName) with the feeling of a beautifully edited documentary scene.
+    You are a narrator speaking to someone traveling by car.
+    Speak to a driver passing through \(cityDisplayName).
 
     Route context:
     \(currentCityInfo.routeContext ?? "No route context provided.")

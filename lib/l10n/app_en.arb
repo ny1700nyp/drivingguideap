@@ -1,6 +1,10 @@
 {
   "@@locale": "en",
   "appTitle": "Twingl Road",
+  "introductionTitle": "Introduction",
+  "introductionButton": "Introduction",
+  "introductionSummary": "Learn what Twingl Road does and how to use it on the road.",
+  "introductionBody": "Twingl Road is an audio-first travel guide for the road. As you pass through cities and towns, it introduces local history, landmarks, scenery, food, festivals, and notable people in a cinematic documentary style.\n\nUse Start Guiding when you want the app to automatically introduce each new town as you enter it. Use Check This Town when you want a one-time guide for your current location without continuous monitoring.\n\nThe Magazine tab gives you related links for the current area. Place links open in Maps, while people, events, and cultural references open in browser search.\n\nIn More, you can choose the narration persona, check the current system language, and select a premium or enhanced TTS voice. On iOS, matching Settings > Apple Intelligence & Siri > Language with the app language can help local AI narration work more naturally.",
   "loadingVoices": "Loading voices...",
   "systemDefaultEnglishVoice": "Using the system default voice.",
   "voiceLoadError": "Could not load voices: {error}",
@@ -28,10 +32,26 @@
   "startGuidingDialogMessage": "Guiding active. I'll automatically introduce each new town's history, landmarks, and local flavors as you enter.",
   "cancel": "Cancel",
   "confirm": "Confirm",
+  "save": "Save",
   "fullNarrative": "Full Narrative",
+  "characterCount": "{count} characters",
+  "@characterCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "wordCount": "{count} words",
+  "@wordCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "noLocationYet": "No location yet",
   "currentArea": "Current area",
-  "startAreaMonitoringPlaceholder": "Start area monitoring.",
   "startGuiding": "Start Guiding",
   "pauseGuide": "Pause Guide",
   "checkThisTown": "Check This Town",
@@ -66,14 +86,40 @@
   "relatedLinks": "Related Links",
   "personaSettings": "Persona Settings",
   "narrativeStyle": "Narrative style",
-  "cinematicStoryteller": "Cinematic storyteller",
+  "cinematicStoryteller": "Storyteller",
   "localHistorian": "Local historian",
   "friendlyRoadCompanion": "Friendly road companion",
+  "energeticTownWit": "Energetic Town Wit",
+  "customPersonasSectionTitle": "Your personas",
+  "customPersonaHint": "Tone, role, attitude, and speaking style details for the narrator.",
+  "customPersonaTitleLabel": "Title",
+  "customPersonaTitleHint": "Short label shown in menus",
+  "customPersonaDescriptionLabel": "Description",
+  "addCustomPersona": "Add persona",
+  "removeCustomPersona": "Remove persona",
+  "customPersonasMaxHint": "You can save up to 24 custom personas.",
+  "routeHistoryTitle": "Places you've passed through",
+  "routeHistoryEmpty":
+      "After you hear a guided town intro for a place, it will appear here.",
+  "cityNarration": "City narration",
+  "clearRouteHistoryTitle": "Route history",
+  "clearRouteHistoryDescription": "Remove all entries saved under Places you've passed through.",
+  "clearRouteHistoryButton": "Clear history",
+  "clearRouteHistoryConfirmTitle": "Clear all route history?",
+  "clearRouteHistoryConfirmBody": "Every saved town will be removed from this device. This can't be undone.",
+  "languageSettings": "Language Settings",
+  "currentLanguage": "Current System Language: {languageName}",
+  "@currentLanguage": {
+    "placeholders": {
+      "languageName": {}
+    }
+  },
+  "appleIntelligenceSiriLanguageNotice": "For the best local AI narration on iOS, match this language in Settings > Apple Intelligence & Siri > Language.",
   "voiceSettings": "Voice Settings",
   "firstLlmPrompt": "First LLM Prompt",
   "noFirstLlmPrompt": "No first LLM prompt generated yet.",
   "liveGuide": "Live Guide",
-  "details": "Details",
+  "details": "Magazine",
   "more": "More",
   "cruisingTowardsNextDiscovery": "Cruising towards the next discovery.",
   "liveNarrative": "Live Narrative",

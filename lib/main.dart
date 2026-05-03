@@ -1,12 +1,16 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'features/audio/tts_audio_guide_service.dart';
 import 'features/guide/contextual_guide_service.dart';
+import 'features/guide/prompt_builder.dart';
 import 'features/guide/dynamic_guide_text_service.dart';
 import 'features/location/region_location_service.dart';
 import 'l10n/generated/app_localizations.dart';
@@ -16,6 +20,243 @@ import 'models/tts_voice.dart';
 
 void main() {
   runApp(const DrivingGuideApp());
+}
+
+class _CustomPersona {
+  const _CustomPersona({
+    required this.id,
+    required this.title,
+    required this.description,
+  });
+
+  final String id;
+  final String title;
+  final String description;
+
+  static const _maxTitleLen = 120;
+  static const _maxDescriptionLen = 600;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'description': description,
+      };
+
+  static final _idPattern = RegExp(r'^[a-z0-9]{8,64}$');
+
+  static String _clamp(String s, int max) =>
+      s.length > max ? s.substring(0, max) : s;
+
+  static String _legacyTitle(String text) {
+    final line = text.split(RegExp(r'\r?\n')).first.trim();
+    if (line.isEmpty) return 'Persona';
+    const cap = 80;
+    return line.length > cap ? '${line.substring(0, cap)}…' : line;
+  }
+
+  static _CustomPersona? tryParse(Map<String, dynamic> map) {
+    final id = map['id'];
+    if (id is! String) return null;
+    final idTrim = id.trim();
+    if (!_idPattern.hasMatch(idTrim)) return null;
+
+    final titleRaw = map['title'];
+    final descRaw = map['description'];
+    if (titleRaw is String && descRaw is String) {
+      final ti = titleRaw.trim();
+      final de = descRaw.trim();
+      if (ti.isEmpty || de.isEmpty) return null;
+      return _CustomPersona(
+        id: idTrim,
+        title: _clamp(ti, _maxTitleLen),
+        description: _clamp(de, _maxDescriptionLen),
+      );
+    }
+
+    final legacyText = map['text'];
+    if (legacyText is! String) return null;
+    final legacy = legacyText.trim();
+    if (legacy.isEmpty) return null;
+    final description = _clamp(legacy, _maxDescriptionLen);
+    return _CustomPersona(
+      id: idTrim,
+      title: _clamp(_legacyTitle(description), _maxTitleLen),
+      description: description,
+    );
+  }
+}
+
+class _GuideHistoryEntry {
+  const _GuideHistoryEntry({
+    required this.cityName,
+    required this.firstLlmResult,
+    required this.secondLlmResult,
+    required this.recordedAt,
+    this.links = const [],
+  });
+
+  final String cityName;
+  final String firstLlmResult;
+  final String secondLlmResult;
+  final DateTime recordedAt;
+  final List<GuideLink> links;
+
+  String get selectionKey =>
+      '${recordedAt.toUtc().toIso8601String()}|$cityName';
+
+  Map<String, dynamic> toJson() => {
+        'cityName': cityName,
+        'firstLlmResult': firstLlmResult,
+        'secondLlmResult': secondLlmResult,
+        'recordedAt': recordedAt.toUtc().toIso8601String(),
+        'links': links.map((l) => l.toJson()).toList(),
+      };
+
+  static List<GuideLink> _decodeLinks(dynamic raw) {
+    if (raw is! List) return [];
+    final out = <GuideLink>[];
+    for (final item in raw) {
+      if (item is Map<String, dynamic>) {
+        final gl = GuideLink.tryParse(item);
+        if (gl != null) out.add(gl);
+      } else if (item is Map) {
+        final gl = GuideLink.tryParse(Map<String, dynamic>.from(item));
+        if (gl != null) out.add(gl);
+      }
+    }
+    return out;
+  }
+
+  static _GuideHistoryEntry? tryParse(Map<String, dynamic> map) {
+    final city = map['cityName'];
+    final first = map['firstLlmResult'];
+    final at = map['recordedAt'];
+    if (city is! String || first is! String || at is! String) {
+      return null;
+    }
+    final secondStr =
+        map['secondLlmResult'] is String ? map['secondLlmResult'] as String : '';
+    final parsedTime = DateTime.tryParse(at);
+    if (parsedTime == null) return null;
+    final cn = city.trim();
+    if (cn.isEmpty) return null;
+    return _GuideHistoryEntry(
+      cityName: cn,
+      firstLlmResult: first,
+      secondLlmResult: secondStr,
+      recordedAt: parsedTime.toLocal(),
+      links: _decodeLinks(map['links']),
+    );
+  }
+}
+
+class _AddCustomPersonaEditorPage extends StatefulWidget {
+  const _AddCustomPersonaEditorPage({required this.l10n});
+
+  final AppLocalizations l10n;
+
+  @override
+  State<_AddCustomPersonaEditorPage> createState() =>
+      _AddCustomPersonaEditorPageState();
+}
+
+class _AddCustomPersonaEditorPageState extends State<_AddCustomPersonaEditorPage> {
+  late final TextEditingController _titleController;
+  late final TextEditingController _descriptionController;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController();
+    _descriptionController = TextEditingController();
+    void refresh() => setState(() {});
+    _titleController.addListener(refresh);
+    _descriptionController.addListener(refresh);
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  bool get _canSave {
+    final t = _titleController.text.trim();
+    final d = _descriptionController.text.trim();
+    return t.isNotEmpty && d.isNotEmpty;
+  }
+
+  void _submit() {
+    if (!_canSave) return;
+    Navigator.of(context).pop((
+      _titleController.text.trim(),
+      _descriptionController.text.trim(),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = widget.l10n;
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          tooltip: l10n.cancel,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(l10n.addCustomPersona),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilledButton(
+              onPressed: _canSave ? _submit : null,
+              child: Text(l10n.save),
+            ),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: _titleController,
+                autofocus: true,
+                maxLength: _CustomPersona._maxTitleLen,
+                maxLines: 2,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: InputDecoration(
+                  labelText: l10n.customPersonaTitleLabel,
+                  hintText: l10n.customPersonaTitleHint,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: _descriptionController,
+                maxLength: _CustomPersona._maxDescriptionLen,
+                minLines: 12,
+                maxLines: null,
+                keyboardType: TextInputType.multiline,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: InputDecoration(
+                  labelText: l10n.customPersonaDescriptionLabel,
+                  hintText: l10n.customPersonaHint,
+                  alignLabelWithHint: true,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class DrivingGuideApp extends StatelessWidget {
@@ -211,6 +452,10 @@ class DrivingGuideHomePage extends StatefulWidget {
 
 class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   static const _narrativeStylePreferenceKey = 'narrative_style';
+  static const _customPersonasPreferenceKey = 'custom_personas_v1';
+  static const _maxCustomPersonas = 24;
+  static const _guideHistoryPreferenceKey = 'guide_route_history_v1';
+  static const _maxGuideHistoryEntries = 100;
   static const _voicePreferenceKey = 'tts_voice_id';
   static const _systemVoicePreferenceValue = 'system-default';
 
@@ -243,10 +488,12 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   TtsVoice? _selectedVoice;
   String _voiceStatus = '';
   String _firstLlmInput = '';
-  String _secondLlmResult = '';
   String _preparedTtsText = '';
   SpeakingRange? _currentSpeakingRange;
-  String _narrativeStyle = 'Cinematic storyteller';
+  String _narrativeStyle = 'Storyteller';
+  List<_CustomPersona> _customPersonas = const [];
+  List<_GuideHistoryEntry> _guideHistory = const [];
+  String? _magazineHistorySelectionKey;
   String? _loadedVoiceLocalePrefix;
   List<GuideLink> _guideLinks = const [];
   String? _currentTestStop;
@@ -258,6 +505,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   bool _isAiThinking = false;
   bool _showTestRouteControls = false;
   bool _showFirstLlmDebug = false;
+  bool _isIntroductionExpanded = false;
   int _selectedTabIndex = 0;
   int _liveGuideTapCount = 0;
   int _moreTapCount = 0;
@@ -343,27 +591,275 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
     return '${_voicePreferenceKey}_$localePrefix';
   }
 
+  String _currentLanguageName() {
+    final languageCode = Localizations.localeOf(context).languageCode;
+    return switch (languageCode) {
+      'ko' => 'Korean',
+      'ja' => 'Japanese',
+      'zh' => 'Chinese',
+      'es' => 'Spanish',
+      'de' => 'German',
+      'fr' => 'French',
+      _ => 'English',
+    };
+  }
+
+  List<_CustomPersona> _decodeCustomPersonas(String? raw) {
+    if (raw == null || raw.isEmpty) return [];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return [];
+      final out = <_CustomPersona>[];
+      for (final item in decoded) {
+        if (item is Map<String, dynamic>) {
+          final p = _CustomPersona.tryParse(item);
+          if (p != null) out.add(p);
+        } else if (item is Map) {
+          final p = _CustomPersona.tryParse(Map<String, dynamic>.from(item));
+          if (p != null) out.add(p);
+        }
+      }
+      return out.length > _maxCustomPersonas
+          ? out.take(_maxCustomPersonas).toList()
+          : out;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  bool _isAllowedNarrativeStyle(String style, List<_CustomPersona> customs) {
+    const predefined = {
+      'Storyteller',
+      'Local historian',
+      'Friendly road companion',
+      'Energetic Town Wit',
+    };
+    if (predefined.contains(style)) return true;
+    final prefix = PromptBuilder.customPersonaValuePrefix;
+    if (style.startsWith(prefix)) {
+      final id = style.substring(prefix.length);
+      return customs.any((c) => c.id == id);
+    }
+    return false;
+  }
+
+  Map<String, CustomPersonaPromptContent> _customPersonasForPrompt() {
+    return {
+      for (final p in _customPersonas)
+        p.id: CustomPersonaPromptContent(
+          title: p.title,
+          description: p.description,
+        ),
+    };
+  }
+
+  String _truncatePersonaMenuLabel(String text) {
+    final t = text.trim();
+    if (t.length <= 72) return t;
+    return '${t.substring(0, 69)}…';
+  }
+
+  String _generatePersonaId() {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    final r = Random();
+    for (var attempt = 0; attempt < 12; attempt++) {
+      final id = List.generate(16, (_) => chars[r.nextInt(chars.length)]).join();
+      if (!_customPersonas.any((p) => p.id == id)) {
+        return id;
+      }
+    }
+    return '${DateTime.now().microsecondsSinceEpoch}';
+  }
+
+  Future<void> _saveCustomPersonas() async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(
+      _customPersonasPreferenceKey,
+      jsonEncode(_customPersonas.map((p) => p.toJson()).toList()),
+    );
+  }
+
+  List<_GuideHistoryEntry> _decodeGuideHistory(String? raw) {
+    if (raw == null || raw.isEmpty) return [];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return [];
+      final out = <_GuideHistoryEntry>[];
+      for (final item in decoded) {
+        if (item is Map<String, dynamic>) {
+          final e = _GuideHistoryEntry.tryParse(item);
+          if (e != null) out.add(e);
+        } else if (item is Map) {
+          final e = _GuideHistoryEntry.tryParse(
+            Map<String, dynamic>.from(item),
+          );
+          if (e != null) out.add(e);
+        }
+      }
+      out.sort((a, b) => b.recordedAt.compareTo(a.recordedAt));
+      return out.length > _maxGuideHistoryEntries
+          ? out.take(_maxGuideHistoryEntries).toList()
+          : out;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> _saveGuideHistory() async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(
+      _guideHistoryPreferenceKey,
+      jsonEncode(_guideHistory.map((e) => e.toJson()).toList()),
+    );
+  }
+
+  Future<void> _clearGuideHistory() async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.remove(_guideHistoryPreferenceKey);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _guideHistory = const [];
+      _magazineHistorySelectionKey = null;
+    });
+  }
+
+  Future<void> _confirmClearGuideHistory() async {
+    final l10n = _l10n;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.clearRouteHistoryConfirmTitle),
+        content: Text(l10n.clearRouteHistoryConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.confirm),
+          ),
+        ],
+      ),
+    );
+    if (ok == true && mounted) {
+      await _clearGuideHistory();
+    }
+  }
+
+  _GuideHistoryEntry? _historyEntryFromGuide(GuideContent? guide) {
+    if (guide?.secondLlmRaw == null) return null;
+    final first = guide!.fullText.trim();
+    if (first.isEmpty) return null;
+    final city = guide.regionName.trim();
+    if (city.isEmpty) return null;
+    return _GuideHistoryEntry(
+      cityName: city,
+      firstLlmResult: first,
+      secondLlmResult: guide.secondLlmRaw!.trim(),
+      recordedAt: guide.generatedAt.toLocal(),
+      links: guide.links,
+    );
+  }
+
+  Future<void> _openAddCustomPersonaEditor() async {
+    if (_customPersonas.length >= _maxCustomPersonas || !mounted) {
+      return;
+    }
+    final l10n = _l10n;
+    final result = await Navigator.of(context).push<(String, String)?>(
+      MaterialPageRoute<(String, String)?>(
+        fullscreenDialog: true,
+        builder: (ctx) => _AddCustomPersonaEditorPage(l10n: l10n),
+      ),
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+    final title = result.$1.trim();
+    final description = result.$2.trim();
+    if (title.isEmpty || description.isEmpty) {
+      return;
+    }
+    _commitCustomPersona(title, description);
+  }
+
+  void _commitCustomPersona(String title, String description) {
+    final ti = title.trim();
+    final de = description.trim();
+    if (ti.isEmpty ||
+        de.isEmpty ||
+        _customPersonas.length >= _maxCustomPersonas) {
+      return;
+    }
+    final persona = _CustomPersona(
+      id: _generatePersonaId(),
+      title: ti.length > _CustomPersona._maxTitleLen
+          ? ti.substring(0, _CustomPersona._maxTitleLen)
+          : ti,
+      description: de.length > _CustomPersona._maxDescriptionLen
+          ? de.substring(0, _CustomPersona._maxDescriptionLen)
+          : de,
+    );
+    final styleValue =
+        '${PromptBuilder.customPersonaValuePrefix}${persona.id}';
+    setState(() {
+      _customPersonas = [..._customPersonas, persona];
+      _narrativeStyle = styleValue;
+    });
+    unawaited(_saveCustomPersonas());
+    unawaited(_saveNarrativeStyle(styleValue));
+  }
+
+  void _removeCustomPersona(String id) {
+    final prefix = PromptBuilder.customPersonaValuePrefix;
+    setState(() {
+      _customPersonas = _customPersonas.where((p) => p.id != id).toList();
+      if (_narrativeStyle == '$prefix$id') {
+        _narrativeStyle = 'Storyteller';
+        unawaited(_saveNarrativeStyle(_narrativeStyle));
+      }
+    });
+    unawaited(_saveCustomPersonas());
+  }
+
   Future<void> _loadSavedSettings() async {
     final preferences = await SharedPreferences.getInstance();
+    final customs = _decodeCustomPersonas(
+      preferences.getString(_customPersonasPreferenceKey),
+    );
+    final history = _decodeGuideHistory(
+      preferences.getString(_guideHistoryPreferenceKey),
+    );
     final savedNarrativeStyle = preferences.getString(
       _narrativeStylePreferenceKey,
     );
-    if (!mounted || savedNarrativeStyle == null) {
+    if (!mounted) {
       return;
     }
 
-    const supportedStyles = {
-      'Cinematic storyteller',
-      'Local historian',
-      'Friendly road companion',
-    };
-    if (!supportedStyles.contains(savedNarrativeStyle)) {
-      return;
-    }
+    final normalizedStyle = savedNarrativeStyle == 'Cinematic storyteller'
+        ? 'Storyteller'
+        : savedNarrativeStyle;
 
     setState(() {
-      _narrativeStyle = savedNarrativeStyle;
+      _customPersonas = customs;
+      _guideHistory = history;
     });
+
+    final candidate = normalizedStyle;
+    if (candidate != null && _isAllowedNarrativeStyle(candidate, customs)) {
+      setState(() => _narrativeStyle = candidate);
+    } else if (candidate != null) {
+      setState(() => _narrativeStyle = 'Storyteller');
+      unawaited(_saveNarrativeStyle('Storyteller'));
+    }
+
+    if (savedNarrativeStyle == 'Cinematic storyteller') {
+      unawaited(_saveNarrativeStyle('Storyteller'));
+    }
   }
 
   Future<void> _loadVoices({required String localePrefix}) async {
@@ -504,7 +1000,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
       await _ttsService.configure();
       setState(() {
         _firstLlmInput = '';
-        _secondLlmResult = '';
+        _currentTestStop = null;
         _preparedTtsText = '';
         _currentSpeakingRange = null;
         _guideLinks = const [];
@@ -542,7 +1038,6 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
       _currentRegion = null;
       _currentTestStop = null;
       _firstLlmInput = '';
-      _secondLlmResult = '';
       _preparedTtsText = '';
       _currentSpeakingRange = null;
       _guideLinks = const [];
@@ -564,6 +1059,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
     setState(() {
       _isTestRouteRunning = false;
       _isTestRouteSpeaking = false;
+      _currentTestStop = null;
       _isAiThinking = false;
       _isPlaybackPaused = false;
       _isPlaybackCompleted = false;
@@ -611,7 +1107,6 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
     setState(() {
       _currentTestStop = stop;
       _firstLlmInput = '';
-      _secondLlmResult = '';
       _preparedTtsText = '';
       _currentSpeakingRange = null;
       _guideLinks = const [];
@@ -627,13 +1122,18 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
         speedMph: 35,
         narrativeStyle: _narrativeStyle,
         outputLanguage: _llmOutputLanguage(),
+        customPersonasById: _customPersonasForPrompt(),
         onPipelineEvent: _handlePipelineEvent,
       );
       if (!mounted || runId != _testRouteRunId) {
         return;
       }
       final text = _dynamicTextService.selectText(guide: guide, speedMph: 35);
-      _setGuideOutput(text: text, links: guide.links);
+      _setGuideOutput(
+        text: text,
+        links: guide.links,
+        guideForHistory: guide,
+      );
       final playbackRunId = _beginPlayback();
       await _ttsService.speak(text);
       _completePlayback(playbackRunId);
@@ -649,8 +1149,10 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   Future<void> _handleRegionChange(RegionSnapshot region) async {
     setState(() {
       _currentRegion = region;
+      if (!_isTestRouteRunning) {
+        _currentTestStop = null;
+      }
       _firstLlmInput = '';
-      _secondLlmResult = '';
       _preparedTtsText = '';
       _currentSpeakingRange = null;
       _guideLinks = const [];
@@ -661,13 +1163,18 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
       region,
       narrativeStyle: _narrativeStyle,
       outputLanguage: _llmOutputLanguage(),
+      customPersonasById: _customPersonasForPrompt(),
       onPipelineEvent: _handlePipelineEvent,
     );
     final text = _dynamicTextService.selectText(
       guide: guide,
       speedMph: region.speedMph,
     );
-    _setGuideOutput(text: text, links: guide.links);
+    _setGuideOutput(
+      text: text,
+      links: guide.links,
+      guideForHistory: guide,
+    );
 
     final playbackRunId = _beginPlayback();
     await _ttsService.speak(text);
@@ -688,7 +1195,9 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   void _setGuideOutput({
     required String text,
     required List<GuideLink> links,
+    GuideContent? guideForHistory,
   }) {
+    final historyEntry = _historyEntryFromGuide(guideForHistory);
     setState(() {
       _preparedTtsText = text;
       _currentSpeakingRange = null;
@@ -697,8 +1206,21 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
       _isPlaybackCompleted = false;
       _resumeSpeakingIndex = 0;
       _isAiThinking = false;
+      _magazineHistorySelectionKey = null;
+      if (historyEntry != null) {
+        _guideHistory = [
+          historyEntry,
+          ..._guideHistory,
+        ];
+        if (_guideHistory.length > _maxGuideHistoryEntries) {
+          _guideHistory =
+              _guideHistory.take(_maxGuideHistoryEntries).toList();
+        }
+      }
     });
-
+    if (historyEntry != null) {
+      unawaited(_saveGuideHistory());
+    }
   }
 
   int _beginPlayback() {
@@ -770,7 +1292,6 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
       });
     } else if (event.message == 'Proper noun extraction received.') {
       setState(() {
-        _secondLlmResult = event.payload!;
         _isAiThinking = false;
       });
     }
@@ -797,7 +1318,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
     required String label,
     required bool map,
   }) async {
-    final areaName = _currentAreaName();
+    final areaName = _magazineDetailQuerySuffix();
     final query = map ? '$label $areaName' : '$label $areaName';
     final encodedQuery = Uri.encodeQueryComponent(query);
     final url = map
@@ -868,6 +1389,17 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
                       },
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      '${l10n.characterCount(_preparedTtsText.characters.length)} · ${l10n.wordCount(_wordCount(_preparedTtsText))}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurface.withValues(alpha: 0.68),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -892,6 +1424,46 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
     return name.trim().isEmpty ? _l10n.currentArea : name.trim();
   }
 
+  _GuideHistoryEntry? _resolvedMagazineHistoryEntry() {
+    final key = _magazineHistorySelectionKey;
+    if (key == null) return null;
+    for (final e in _guideHistory) {
+      if (e.selectionKey == key) return e;
+    }
+    return null;
+  }
+
+  String _magazineDetailShortTitle() {
+    final e = _resolvedMagazineHistoryEntry();
+    if (e != null) {
+      final p = e.cityName.split(',').first.trim();
+      if (p.isNotEmpty) return p;
+    }
+    return _currentAreaName();
+  }
+
+  String _magazineDetailQuerySuffix() {
+    final e = _resolvedMagazineHistoryEntry();
+    if (e != null && e.cityName.trim().isNotEmpty) {
+      return e.cityName.trim();
+    }
+    final testStop = _currentTestStop;
+    if (testStop != null) return testStop;
+    final region = _currentRegion;
+    if (region != null) return region.displayName;
+    return _currentAreaName();
+  }
+
+  List<GuideLink> _magazineRelatedLinks() {
+    final e = _resolvedMagazineHistoryEntry();
+    if (e != null && e.links.isNotEmpty) return e.links;
+    return _guideLinks;
+  }
+
+  int _wordCount(String text) {
+    return RegExp(r'\S+').allMatches(text.trim()).length;
+  }
+
   bool _hasCurrentArea() {
     return _currentTestStop != null || _currentRegion != null;
   }
@@ -911,7 +1483,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
           imageUrl: backgroundUrl,
           narrative: hasNarrative
               ? _preparedTtsText
-              : l10n.startAreaMonitoringPlaceholder,
+              : l10n.startGuiding,
           speakingRange: _currentSpeakingRange,
           isThinking: _isAiThinking,
           isSpeaking:
@@ -989,49 +1561,51 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   }
 
   Widget _buildDetailsTab(BuildContext context) {
-    final areaName = _currentAreaName();
+    final titleShort = _magazineDetailShortTitle();
+    final queryContext = _magazineDetailQuerySuffix();
+    final relatedLinks = _magazineRelatedLinks();
     final l10n = _l10n;
     final cards = [
       _DetailCardData(
         title: l10n.heritage,
         icon: Icons.account_balance,
-        body: l10n.heritageBody(areaName),
-        query: '$areaName history name origin',
+        body: l10n.heritageBody(titleShort),
+        query: '$queryContext history name origin',
         opensMap: false,
       ),
       _DetailCardData(
         title: l10n.icons,
         icon: Icons.stars,
         body: l10n.iconsBody,
-        query: '$areaName famous people',
+        query: '$queryContext famous people',
         opensMap: false,
       ),
       _DetailCardData(
         title: l10n.views,
         icon: Icons.landscape,
         body: l10n.viewsBody,
-        query: '$areaName scenic viewpoint',
+        query: '$queryContext scenic viewpoint',
         opensMap: true,
       ),
       _DetailCardData(
         title: l10n.bites,
         icon: Icons.restaurant,
         body: l10n.bitesBody,
-        query: '$areaName best local food signature menu',
+        query: '$queryContext best local food signature menu',
         opensMap: true,
       ),
       _DetailCardData(
         title: l10n.goods,
         icon: Icons.local_florist,
         body: l10n.goodsBody,
-        query: '$areaName local products wine beer seafood agriculture',
+        query: '$queryContext local products wine beer seafood agriculture',
         opensMap: false,
       ),
       _DetailCardData(
         title: l10n.trivia,
         icon: Icons.movie,
         body: l10n.triviaBody,
-        query: '$areaName trivia film location festival event',
+        query: '$queryContext trivia film location festival event',
         opensMap: false,
       ),
     ];
@@ -1042,7 +1616,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
         Text(l10n.digitalMagazine, style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 8),
         Text(
-          l10n.detailsIntro(areaName),
+          l10n.detailsIntro(titleShort),
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: 16),
@@ -1070,8 +1644,96 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
         const SizedBox(height: 16),
         _StatusCard(
           title: l10n.relatedLinks,
-          child: _GuideLinks(links: _guideLinks, onOpen: _openGuideLink),
+          child: _GuideLinks(links: relatedLinks, onOpen: _openGuideLink),
         ),
+        const SizedBox(height: 24),
+        Text(
+          l10n.routeHistoryTitle,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (_guideHistory.isEmpty)
+          Text(
+            l10n.routeHistoryEmpty,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).hintColor,
+            ),
+          )
+        else
+          Card(
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                for (var i = 0; i < _guideHistory.length; i++) ...[
+                  if (i > 0) const Divider(height: 1),
+                  Builder(
+                    builder: (context) {
+                      final entry = _guideHistory[i];
+                      final sel =
+                          _magazineHistorySelectionKey == entry.selectionKey;
+                      final tint = Theme.of(context)
+                          .colorScheme
+                          .primaryContainer
+                          .withValues(alpha: 0.28);
+                      return ExpansionTile(
+                        key: ValueKey(
+                          '${entry.recordedAt.toIso8601String()}_$i',
+                        ),
+                        tilePadding:
+                            const EdgeInsets.symmetric(horizontal: 12),
+                        backgroundColor: sel ? tint : null,
+                        collapsedBackgroundColor: sel ? tint : null,
+                        onExpansionChanged: (expanded) {
+                          setState(() {
+                            if (expanded) {
+                              _magazineHistorySelectionKey =
+                                  entry.selectionKey;
+                            } else if (_magazineHistorySelectionKey ==
+                                entry.selectionKey) {
+                              _magazineHistorySelectionKey = null;
+                            }
+                          });
+                        },
+                        title: Text(
+                          entry.cityName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          DateFormat.yMMMd().add_jm().format(entry.recordedAt),
+                        ),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  l10n.cityNarration,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleSmall
+                                      ?.copyWith(fontWeight: FontWeight.w700),
+                                ),
+                                const SizedBox(height: 6),
+                                SelectableText(
+                                  entry.firstLlmResult,
+                                  style:
+                                      Theme.of(context).textTheme.bodyMedium,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -1081,30 +1743,111 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
+        _IntroductionCard(
+          title: l10n.introductionTitle,
+          summary: l10n.introductionSummary,
+          body: l10n.introductionBody,
+          expanded: _isIntroductionExpanded,
+          onTap: () {
+            setState(() {
+              _isIntroductionExpanded = !_isIntroductionExpanded;
+            });
+          },
+        ),
+        const SizedBox(height: 12),
         _StatusCard(
           title: l10n.personaSettings,
-          child: DropdownButtonFormField<String>(
-            initialValue: _narrativeStyle,
-            decoration: InputDecoration(labelText: l10n.narrativeStyle),
-            items: [
-              DropdownMenuItem(
-                value: 'Cinematic storyteller',
-                child: Text(l10n.cinematicStoryteller),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _ExpandableChoiceField(
+                label: l10n.narrativeStyle,
+                selectedValue: _narrativeStyle,
+                entries: [
+                  (value: 'Storyteller', label: l10n.cinematicStoryteller),
+                  (value: 'Local historian', label: l10n.localHistorian),
+                  (
+                    value: 'Friendly road companion',
+                    label: l10n.friendlyRoadCompanion,
+                  ),
+                  (
+                    value: 'Energetic Town Wit',
+                    label: l10n.energeticTownWit,
+                  ),
+                  for (final p in _customPersonas)
+                    (
+                      value:
+                          '${PromptBuilder.customPersonaValuePrefix}${p.id}',
+                      label: _truncatePersonaMenuLabel(p.title),
+                    ),
+                ],
+                onSelected: (value) {
+                  setState(() => _narrativeStyle = value);
+                  unawaited(_saveNarrativeStyle(value));
+                },
               ),
-              DropdownMenuItem(
-                value: 'Local historian',
-                child: Text(l10n.localHistorian),
+              const SizedBox(height: 16),
+              Text(
+                l10n.customPersonasSectionTitle,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-              DropdownMenuItem(
-                value: 'Friendly road companion',
-                child: Text(l10n.friendlyRoadCompanion),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.icon(
+                  onPressed: _customPersonas.length >= _maxCustomPersonas
+                      ? null
+                      : () => _openAddCustomPersonaEditor(),
+                  icon: const Icon(Icons.add),
+                  label: Text(l10n.addCustomPersona),
+                ),
               ),
+              if (_customPersonas.length >= _maxCustomPersonas)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    l10n.customPersonasMaxHint,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              if (_customPersonas.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                ..._customPersonas.map(
+                  (p) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      p.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: IconButton(
+                      tooltip: l10n.removeCustomPersona,
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () => _removeCustomPersona(p.id),
+                    ),
+                  ),
+                ),
+              ],
             ],
-            onChanged: (value) {
-              if (value == null) return;
-              setState(() => _narrativeStyle = value);
-              unawaited(_saveNarrativeStyle(value));
-            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        _StatusCard(
+          title: l10n.languageSettings,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.currentLanguage(_currentLanguageName())),
+              if (Platform.isIOS) ...[
+                const SizedBox(height: 8),
+                Text(
+                  l10n.appleIntelligenceSiriLanguageNotice,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ],
           ),
         ),
         const SizedBox(height: 12),
@@ -1128,6 +1871,33 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
             ),
           ),
         ],
+        const SizedBox(height: 12),
+        _StatusCard(
+          title: l10n.clearRouteHistoryTitle,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                l10n.clearRouteHistoryDescription,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: _guideHistory.isEmpty
+                      ? null
+                      : _confirmClearGuideHistory,
+                  icon: const Icon(Icons.delete_outline),
+                  label: Text(l10n.clearRouteHistoryButton),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -1145,6 +1915,8 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   @override
   Widget build(BuildContext context) {
     final canOpenDetails = _hasCurrentArea();
+    final canOpenMagazine =
+        canOpenDetails || _guideHistory.isNotEmpty;
     final disabledColor = Theme.of(context).disabledColor;
     final l10n = _l10n;
 
@@ -1170,7 +1942,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedTabIndex,
         onDestinationSelected: (index) {
-          if (index == 1 && !canOpenDetails) {
+          if (index == 1 && !canOpenMagazine) {
             _liveGuideTapCount = 0;
             _moreTapCount = 0;
             return;
@@ -1212,7 +1984,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
           NavigationDestination(
             icon: Icon(
               Icons.auto_stories_outlined,
-              color: canOpenDetails ? null : disabledColor,
+              color: canOpenMagazine ? null : disabledColor,
             ),
             label: l10n.details,
           ),
@@ -1244,6 +2016,251 @@ class _StatusCard extends StatelessWidget {
             const SizedBox(height: 8),
             child,
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ExpandableChoiceField extends StatefulWidget {
+  const _ExpandableChoiceField({
+    required this.label,
+    required this.selectedValue,
+    required this.entries,
+    required this.onSelected,
+  });
+
+  final String label;
+  final String selectedValue;
+  final List<({String value, String label})> entries;
+  final ValueChanged<String> onSelected;
+
+  @override
+  State<_ExpandableChoiceField> createState() => _ExpandableChoiceFieldState();
+}
+
+class _ExpandableChoiceFieldState extends State<_ExpandableChoiceField> {
+  bool _expanded = false;
+
+  String _displayLabel() {
+    for (final e in widget.entries) {
+      if (e.value == widget.selectedValue) {
+        return e.label;
+      }
+    }
+    return widget.entries.isEmpty ? '' : widget.entries.first.label;
+  }
+
+  @override
+  void didUpdateWidget(_ExpandableChoiceField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedValue != widget.selectedValue) {
+      setState(() => _expanded = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final dividerColor = Theme.of(context).dividerColor;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InkWell(
+          borderRadius: BorderRadius.circular(6),
+          onTap: () => setState(() => _expanded = !_expanded),
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: widget.label,
+              border: const OutlineInputBorder(),
+              suffixIcon: Icon(
+                _expanded ? Icons.expand_less : Icons.expand_more,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _displayLabel(),
+                  style: Theme.of(context).textTheme.bodyLarge,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ),
+        ),
+        AnimatedCrossFade(
+          alignment: Alignment.topCenter,
+          duration: const Duration(milliseconds: 200),
+          crossFadeState: _expanded
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
+          firstChild: const SizedBox.shrink(),
+          secondChild: Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: dividerColor.withValues(alpha: 0.45),
+                ),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var i = 0; i < widget.entries.length; i++) ...[
+                      if (i > 0)
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: dividerColor.withValues(alpha: 0.35),
+                        ),
+                      InkWell(
+                        onTap: () {
+                          widget.onSelected(widget.entries[i].value);
+                          setState(() => _expanded = false);
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 14,
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(
+                                width: 26,
+                                child: widget.entries[i].value ==
+                                        widget.selectedValue
+                                    ? Icon(
+                                        Icons.check,
+                                        size: 22,
+                                        color: scheme.primary,
+                                      )
+                                    : const SizedBox(height: 22),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  widget.entries[i].label,
+                                  style:
+                                      Theme.of(context).textTheme.bodyLarge,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _IntroductionCard extends StatelessWidget {
+  const _IntroductionCard({
+    required this.title,
+    required this.summary,
+    required this.body,
+    required this.expanded,
+    required this.onTap,
+  });
+
+  final String title;
+  final String summary;
+  final String body;
+  final bool expanded;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFF6D5DF6),
+            Color(0xFF55D6BE),
+            Color(0xFFFF9F43),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6D5DF6).withValues(alpha: 0.20),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      expanded
+                          ? Icons.keyboard_arrow_up_rounded
+                          : Icons.keyboard_arrow_down_rounded,
+                      color: Colors.white,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  summary,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.92),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                AnimatedCrossFade(
+                  firstChild: const SizedBox.shrink(),
+                  secondChild: Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(
+                      body,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.white,
+                        height: 1.45,
+                      ),
+                    ),
+                  ),
+                  crossFadeState: expanded
+                      ? CrossFadeState.showSecond
+                      : CrossFadeState.showFirst,
+                  duration: const Duration(milliseconds: 220),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -1642,7 +2659,7 @@ class _NarrativeWindowState extends State<_NarrativeWindow> {
       final safeEnd = range.end.clamp(safeStart, widget.text.length).toInt();
       final textPainter = TextPainter(
         text: TextSpan(text: widget.text, style: style),
-        textDirection: TextDirection.ltr,
+        textDirection: Directionality.of(context),
       )..layout(maxWidth: maxWidth);
       final boxes = textPainter.getBoxesForSelection(
         TextSelection(baseOffset: safeStart, extentOffset: safeEnd),
@@ -1939,21 +2956,15 @@ class _VoiceSelector extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        DropdownButtonFormField<String>(
-          initialValue: selectedVoice?.id,
-          decoration: InputDecoration(
-            border: const OutlineInputBorder(),
-            labelText: l10n.voice,
-          ),
-          items: [
-            DropdownMenuItem(
-              value: 'system-default',
-              child: Text(l10n.systemDefault),
-            ),
+        _ExpandableChoiceField(
+          label: l10n.voice,
+          selectedValue: selectedVoice?.id ?? 'system-default',
+          entries: [
+            (value: 'system-default', label: l10n.systemDefault),
             for (final voice in voices)
-              DropdownMenuItem(value: voice.id, child: Text(voice.displayName)),
+              (value: voice.id, label: voice.displayName),
           ],
-          onChanged: (value) {
+          onSelected: (value) {
             if (value == 'system-default') {
               onChanged(null);
               return;

@@ -68,6 +68,7 @@ class ContextualGuideService {
     RegionSnapshot region, {
     required String narrativeStyle,
     required String outputLanguage,
+    Map<String, CustomPersonaPromptContent> customPersonasById = const {},
     GuidePipelineListener? onPipelineEvent,
   }) async {
     return buildGuideForRegionName(
@@ -77,6 +78,7 @@ class ContextualGuideService {
       longitude: region.position.longitude,
       narrativeStyle: narrativeStyle,
       outputLanguage: outputLanguage,
+      customPersonasById: customPersonasById,
       onPipelineEvent: onPipelineEvent,
     );
   }
@@ -86,6 +88,7 @@ class ContextualGuideService {
     required double speedMph,
     required String narrativeStyle,
     required String outputLanguage,
+    Map<String, CustomPersonaPromptContent> customPersonasById = const {},
     double? latitude,
     double? longitude,
     GuidePipelineListener? onPipelineEvent,
@@ -119,6 +122,7 @@ class ContextualGuideService {
       cityName: regionName,
       narrativeStyle: narrativeStyle,
       outputLanguage: outputLanguage,
+      customPersonasById: customPersonasById,
     );
     _emit(
       onPipelineEvent,
@@ -165,6 +169,7 @@ class ContextualGuideService {
       shortText: _summarize(generatedText),
       links: links,
       generatedAt: DateTime.now(),
+      secondLlmRaw: entityResponse,
     );
 
     if (_resourcePolicy.shouldStandbyAfterGeneration()) {

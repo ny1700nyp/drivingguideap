@@ -12,6 +12,19 @@ class AppLocalizationsJa extends AppLocalizations {
   String get appTitle => 'Twingl Road';
 
   @override
+  String get introductionTitle => '紹介';
+
+  @override
+  String get introductionButton => 'Introduction';
+
+  @override
+  String get introductionSummary => 'Twingl Roadの機能と、ドライブ中の使い方を確認できます。';
+
+  @override
+  String get introductionBody =>
+      'Twingl Roadは、ドライブ中に通過する都市や町の物語を音声中心で届ける旅行ガイドアプリです。地域の歴史、ランドマーク、風景、食、祭り、有名人などを、映画的なドキュメンタリーのように紹介します。\n\nStart Guidingは、新しい町に入るたびに自動でガイドを聞きたいときに使います。Check This Townは、継続的な位置監視をせずに、現在地のガイドを一度だけ聞きたいときに使います。\n\nマガジンタブでは、現在の地域に関連するリンクを確認できます。場所は地図アプリへ、人物やイベント、文化的なキーワードはブラウザ検索へつながります。\n\nMoreでは、ナレーションのペルソナ、現在のシステム言語、TTS音声を設定できます。iOSでは、設定 > Apple IntelligenceとSiri > 言語 をアプリの言語に合わせると、ローカルAIナレーションがより自然に動作しやすくなります。';
+
+  @override
   String get loadingVoices => '音声を読み込み中...';
 
   @override
@@ -46,16 +59,26 @@ class AppLocalizationsJa extends AppLocalizations {
   String get confirm => '確認';
 
   @override
+  String get save => '保存';
+
+  @override
   String get fullNarrative => '全文ナレーション';
+
+  @override
+  String characterCount(int count) {
+    return '$count文字';
+  }
+
+  @override
+  String wordCount(int count) {
+    return '$count語';
+  }
 
   @override
   String get noLocationYet => 'まだ位置情報がありません';
 
   @override
   String get currentArea => '現在地';
-
-  @override
-  String get startAreaMonitoringPlaceholder => 'エリアガイドを開始してください。';
 
   @override
   String get startGuiding => 'ガイド開始';
@@ -134,13 +157,76 @@ class AppLocalizationsJa extends AppLocalizations {
   String get narrativeStyle => 'ナレーションスタイル';
 
   @override
-  String get cinematicStoryteller => 'シネマティック・ストーリーテラー';
+  String get cinematicStoryteller => 'ストーリーテラー';
 
   @override
   String get localHistorian => '地元の歴史家';
 
   @override
   String get friendlyRoadCompanion => '親しみやすい旅の相棒';
+
+  @override
+  String get energeticTownWit => '活気ある街のウィット';
+
+  @override
+  String get customPersonasSectionTitle => '自分のペルソナ';
+
+  @override
+  String get customPersonaHint => 'ナレーターのトーン、役割、態度、話し方の細かな指示を書いてください。';
+
+  @override
+  String get customPersonaTitleLabel => 'タイトル';
+
+  @override
+  String get customPersonaTitleHint => 'メニューに表示する短い名前';
+
+  @override
+  String get customPersonaDescriptionLabel => '説明';
+
+  @override
+  String get addCustomPersona => 'ペルソナを追加';
+
+  @override
+  String get removeCustomPersona => '削除';
+
+  @override
+  String get customPersonasMaxHint => 'カスタムペルソナは最大24件まで保存できます。';
+
+  @override
+  String get routeHistoryTitle => '通過した場所';
+
+  @override
+  String get routeHistoryEmpty => 'ガイドを再生すると、その都市の記録がここに表示されます。';
+
+  @override
+  String get cityNarration => '都市ナレーション';
+
+  @override
+  String get clearRouteHistoryTitle => 'ルート履歴';
+
+  @override
+  String get clearRouteHistoryDescription => '「通過した場所」に保存された項目をすべて削除します。';
+
+  @override
+  String get clearRouteHistoryButton => '履歴を消去';
+
+  @override
+  String get clearRouteHistoryConfirmTitle => 'ルート履歴をすべて消去しますか？';
+
+  @override
+  String get clearRouteHistoryConfirmBody => '保存された町の記録がこの端末から削除されます。取り消せません。';
+
+  @override
+  String get languageSettings => '言語設定';
+
+  @override
+  String currentLanguage(Object languageName) {
+    return '現在のシステム言語: $languageName';
+  }
+
+  @override
+  String get appleIntelligenceSiriLanguageNotice =>
+      'iOSでより良いローカルAIナレーションを使うには、設定 > Apple IntelligenceとSiri > 言語 でもこの言語に合わせてください。';
 
   @override
   String get voiceSettings => '音声設定';
@@ -155,7 +241,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get liveGuide => 'ライブガイド';
 
   @override
-  String get details => '詳細';
+  String get details => 'マガジン';
 
   @override
   String get more => 'その他';

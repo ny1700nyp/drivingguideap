@@ -12,6 +12,20 @@ class AppLocalizationsEs extends AppLocalizations {
   String get appTitle => 'Twingl Road';
 
   @override
+  String get introductionTitle => 'Introducción';
+
+  @override
+  String get introductionButton => 'Introduction';
+
+  @override
+  String get introductionSummary =>
+      'Conoce qué hace Twingl Road y cómo usarlo durante el viaje.';
+
+  @override
+  String get introductionBody =>
+      'Twingl Road es una guía de viaje pensada primero para audio. Mientras atraviesas ciudades y pueblos, presenta historia local, lugares emblemáticos, paisajes, comida, festivales y personas destacadas con un estilo de documental cinematográfico.\n\nUsa Start Guiding cuando quieras que la app presente automáticamente cada nuevo pueblo al entrar. Usa Check This Town cuando quieras escuchar una guía única de tu ubicación actual sin monitoreo continuo.\n\nLa pestaña Revista ofrece enlaces relacionados con el área actual. Los lugares se abren en Mapas, mientras que personas, eventos y referencias culturales se abren como búsquedas en el navegador.\n\nEn More puedes elegir la persona narrativa, revisar el idioma actual del sistema y seleccionar una voz TTS premium o mejorada. En iOS, hacer coincidir Settings > Apple Intelligence & Siri > Language con el idioma de la app puede ayudar a que la narración local con IA funcione de forma más natural.';
+
+  @override
   String get loadingVoices => 'Cargando voces...';
 
   @override
@@ -47,16 +61,26 @@ class AppLocalizationsEs extends AppLocalizations {
   String get confirm => 'Confirmar';
 
   @override
+  String get save => 'Guardar';
+
+  @override
   String get fullNarrative => 'Narración completa';
+
+  @override
+  String characterCount(int count) {
+    return '$count caracteres';
+  }
+
+  @override
+  String wordCount(int count) {
+    return '$count palabras';
+  }
 
   @override
   String get noLocationYet => 'Aún no hay ubicación';
 
   @override
   String get currentArea => 'Área actual';
-
-  @override
-  String get startAreaMonitoringPlaceholder => 'Inicia la guía del área.';
 
   @override
   String get startGuiding => 'Iniciar guía';
@@ -140,13 +164,82 @@ class AppLocalizationsEs extends AppLocalizations {
   String get narrativeStyle => 'Estilo narrativo';
 
   @override
-  String get cinematicStoryteller => 'Narrador cinematográfico';
+  String get cinematicStoryteller => 'Narrador';
 
   @override
   String get localHistorian => 'Historiador local';
 
   @override
   String get friendlyRoadCompanion => 'Compañero de ruta amigable';
+
+  @override
+  String get energeticTownWit => 'Ingenio local enérgico';
+
+  @override
+  String get customPersonasSectionTitle => 'Tus personas';
+
+  @override
+  String get customPersonaHint =>
+      'Tono, papel, actitud y estilo de habla detallado del narrador.';
+
+  @override
+  String get customPersonaTitleLabel => 'Título';
+
+  @override
+  String get customPersonaTitleHint => 'Nombre corto que aparece en los menús';
+
+  @override
+  String get customPersonaDescriptionLabel => 'Descripción';
+
+  @override
+  String get addCustomPersona => 'Añadir persona';
+
+  @override
+  String get removeCustomPersona => 'Eliminar';
+
+  @override
+  String get customPersonasMaxHint =>
+      'Puedes guardar hasta 24 personas personalizadas.';
+
+  @override
+  String get routeHistoryTitle => 'Lugares por los que pasaste';
+
+  @override
+  String get routeHistoryEmpty =>
+      'Cuando escuches una guía de ciudad, aparecerá aquí.';
+
+  @override
+  String get cityNarration => 'Narración de la ciudad';
+
+  @override
+  String get clearRouteHistoryTitle => 'Historial de ruta';
+
+  @override
+  String get clearRouteHistoryDescription =>
+      'Elimina todas las entradas guardadas en «Lugares por los que pasaste».';
+
+  @override
+  String get clearRouteHistoryButton => 'Borrar historial';
+
+  @override
+  String get clearRouteHistoryConfirmTitle =>
+      '¿Borrar todo el historial de ruta?';
+
+  @override
+  String get clearRouteHistoryConfirmBody =>
+      'Se quitarán todos los pueblos guardados de este dispositivo. No se puede deshacer.';
+
+  @override
+  String get languageSettings => 'Ajustes de idioma';
+
+  @override
+  String currentLanguage(Object languageName) {
+    return 'Idioma actual del sistema: $languageName';
+  }
+
+  @override
+  String get appleIntelligenceSiriLanguageNotice =>
+      'Para obtener una mejor narración local con IA en iOS, haz coincidir este idioma en Configuración > Apple Intelligence y Siri > Idioma.';
 
   @override
   String get voiceSettings => 'Ajustes de voz';
@@ -162,7 +255,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get liveGuide => 'Guía en vivo';
 
   @override
-  String get details => 'Detalles';
+  String get details => 'Revista';
 
   @override
   String get more => 'Más';

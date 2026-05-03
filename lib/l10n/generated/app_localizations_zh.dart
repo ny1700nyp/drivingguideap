@@ -12,6 +12,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appTitle => 'Twingl Road';
 
   @override
+  String get introductionTitle => '介绍';
+
+  @override
+  String get introductionButton => 'Introduction';
+
+  @override
+  String get introductionSummary => '了解 Twingl Road 的用途，以及如何在路上使用它。';
+
+  @override
+  String get introductionBody =>
+      'Twingl Road 是一款以音频为中心的公路旅行导览应用。当你经过城市和小镇时，它会以电影纪录片般的方式介绍当地历史、地标、风景、食物、节庆和知名人物。\n\n当你希望应用在进入每个新城镇时自动介绍当地故事，可以使用 Start Guiding。若只想在当前位置听一次导览，而不进行持续位置监测，可以使用 Check This Town。\n\n杂志标签页会显示当前区域的相关链接。地点会打开地图应用，人物、活动和文化关键词会打开浏览器搜索。\n\n在 More 中，你可以选择旁白人设、查看当前系统语言，并选择高级或增强 TTS 语音。在 iOS 上，将 Settings > Apple Intelligence & Siri > Language 与应用语言保持一致，有助于本地 AI 旁白更自然地工作。';
+
+  @override
   String get loadingVoices => '正在加载语音...';
 
   @override
@@ -45,16 +58,26 @@ class AppLocalizationsZh extends AppLocalizations {
   String get confirm => '确认';
 
   @override
+  String get save => '保存';
+
+  @override
   String get fullNarrative => '完整旁白';
+
+  @override
+  String characterCount(int count) {
+    return '$count字';
+  }
+
+  @override
+  String wordCount(int count) {
+    return '$count词';
+  }
 
   @override
   String get noLocationYet => '尚无位置信息';
 
   @override
   String get currentArea => '当前位置';
-
-  @override
-  String get startAreaMonitoringPlaceholder => '开始区域导览。';
 
   @override
   String get startGuiding => '开始导览';
@@ -133,13 +156,76 @@ class AppLocalizationsZh extends AppLocalizations {
   String get narrativeStyle => '旁白风格';
 
   @override
-  String get cinematicStoryteller => '电影感讲述者';
+  String get cinematicStoryteller => '讲述者';
 
   @override
   String get localHistorian => '本地历史学者';
 
   @override
   String get friendlyRoadCompanion => '友好的旅途伙伴';
+
+  @override
+  String get energeticTownWit => '活力城镇妙语者';
+
+  @override
+  String get customPersonasSectionTitle => '我的人设';
+
+  @override
+  String get customPersonaHint => '讲述者的语气、角色、态度和说话方式的详细说明。';
+
+  @override
+  String get customPersonaTitleLabel => '标题';
+
+  @override
+  String get customPersonaTitleHint => '菜单中显示的简短名称';
+
+  @override
+  String get customPersonaDescriptionLabel => '描述';
+
+  @override
+  String get addCustomPersona => '添加人设';
+
+  @override
+  String get removeCustomPersona => '删除';
+
+  @override
+  String get customPersonasMaxHint => '最多可保存 24 个自定义人设。';
+
+  @override
+  String get routeHistoryTitle => '经过的地点';
+
+  @override
+  String get routeHistoryEmpty => '听完城镇导览后，对应城市的记录会显示在这里。';
+
+  @override
+  String get cityNarration => '城市解说';
+
+  @override
+  String get clearRouteHistoryTitle => '路线记录';
+
+  @override
+  String get clearRouteHistoryDescription => '删除「经过的地点」下保存的所有条目。';
+
+  @override
+  String get clearRouteHistoryButton => '清除记录';
+
+  @override
+  String get clearRouteHistoryConfirmTitle => '清除全部路线记录？';
+
+  @override
+  String get clearRouteHistoryConfirmBody => '所有已保存的城市记录将从本设备移除，且无法撤销。';
+
+  @override
+  String get languageSettings => '语言设置';
+
+  @override
+  String currentLanguage(Object languageName) {
+    return '当前系统语言: $languageName';
+  }
+
+  @override
+  String get appleIntelligenceSiriLanguageNotice =>
+      '为了在 iOS 上获得更好的本地 AI 旁白，请在“设置 > Apple Intelligence 与 Siri > 语言”中也选择相同语言。';
 
   @override
   String get voiceSettings => '语音设置';
@@ -154,7 +240,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get liveGuide => '实时导览';
 
   @override
-  String get details => '详情';
+  String get details => '杂志';
 
   @override
   String get more => '更多';

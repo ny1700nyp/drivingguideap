@@ -8,6 +8,7 @@ class GuideContent {
     this.origin,
     this.localStoryOrNews,
     this.famousLocalFigure,
+    this.secondLlmRaw,
   });
 
   final String regionName;
@@ -19,6 +20,9 @@ class GuideContent {
   final String? localStoryOrNews;
   final String? famousLocalFigure;
 
+  /// Raw JSON/text from the proper-noun extraction step when the full pipeline ran.
+  final String? secondLlmRaw;
+
   GuideContent copyWith({
     String? regionName,
     String? fullText,
@@ -28,6 +32,7 @@ class GuideContent {
     String? origin,
     String? localStoryOrNews,
     String? famousLocalFigure,
+    String? secondLlmRaw,
   }) {
     return GuideContent(
       regionName: regionName ?? this.regionName,
@@ -38,6 +43,7 @@ class GuideContent {
       origin: origin ?? this.origin,
       localStoryOrNews: localStoryOrNews ?? this.localStoryOrNews,
       famousLocalFigure: famousLocalFigure ?? this.famousLocalFigure,
+      secondLlmRaw: secondLlmRaw ?? this.secondLlmRaw,
     );
   }
 
@@ -51,6 +57,7 @@ class GuideContent {
       'shortText': shortText,
       'generatedAt': generatedAt.toIso8601String(),
       'links': links.map((link) => link.toJson()).toList(),
+      'secondLlmRaw': secondLlmRaw,
     };
   }
 }
@@ -67,6 +74,22 @@ class GuideLink {
   final String label;
   final String url;
   final GuideLinkKind kind;
+
+  static GuideLink? tryParse(Map<String, dynamic> json) {
+    final label = json['label'];
+    final url = json['url'];
+    final kindStr = json['kind'];
+    if (label is! String || url is! String || kindStr is! String) {
+      return null;
+    }
+    final GuideLinkKind kind;
+    try {
+      kind = GuideLinkKind.values.byName(kindStr);
+    } catch (_) {
+      return null;
+    }
+    return GuideLink(label: label, url: url, kind: kind);
+  }
 
   Map<String, dynamic> toJson() {
     return {
