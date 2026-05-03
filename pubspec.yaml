@@ -43,6 +43,9 @@ dependencies:
   audio_session: ^0.2.3
   url_launcher: ^6.3.2
   shared_preferences: ^2.5.5
+  kdtree: ^0.2.0
+  connectivity_plus: ^7.1.1
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:
@@ -67,10 +70,10 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/geodata/cities15000.txt
+    - assets/geodata/admin1CodesASCII.txt
+    - assets/geodata/admin2Codes.txt
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

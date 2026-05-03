@@ -9,6 +9,7 @@ class GuideContent {
     this.localStoryOrNews,
     this.famousLocalFigure,
     this.secondLlmRaw,
+    this.showOnDeviceUnavailableNotice = false,
   });
 
   final String regionName;
@@ -23,6 +24,9 @@ class GuideContent {
   /// Raw JSON/text from the proper-noun extraction step when the full pipeline ran.
   final String? secondLlmRaw;
 
+  /// True when city intro used template fallback instead of the native model.
+  final bool showOnDeviceUnavailableNotice;
+
   GuideContent copyWith({
     String? regionName,
     String? fullText,
@@ -33,6 +37,7 @@ class GuideContent {
     String? localStoryOrNews,
     String? famousLocalFigure,
     String? secondLlmRaw,
+    bool? showOnDeviceUnavailableNotice,
   }) {
     return GuideContent(
       regionName: regionName ?? this.regionName,
@@ -44,6 +49,8 @@ class GuideContent {
       localStoryOrNews: localStoryOrNews ?? this.localStoryOrNews,
       famousLocalFigure: famousLocalFigure ?? this.famousLocalFigure,
       secondLlmRaw: secondLlmRaw ?? this.secondLlmRaw,
+      showOnDeviceUnavailableNotice:
+          showOnDeviceUnavailableNotice ?? this.showOnDeviceUnavailableNotice,
     );
   }
 
@@ -58,6 +65,7 @@ class GuideContent {
       'generatedAt': generatedAt.toIso8601String(),
       'links': links.map((link) => link.toJson()).toList(),
       'secondLlmRaw': secondLlmRaw,
+      'showOnDeviceUnavailableNotice': showOnDeviceUnavailableNotice,
     };
   }
 }

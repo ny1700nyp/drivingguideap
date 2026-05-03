@@ -282,4 +282,8 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get moreVoiceDescription =>
       '新しい音声は、設定 > アクセシビリティ > 読み上げコンテンツ > 声 から追加できます。';
+
+  @override
+  String get onDeviceNarrationNotice =>
+      'オンデバイス AI が有効ではありません。システム設定を確認してください。この端末がオンデバイス AI に対応しているかも確認してください。';
 }

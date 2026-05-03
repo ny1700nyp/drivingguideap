@@ -68,16 +68,23 @@ class ContextualGuideService {
     RegionSnapshot region, {
     required String narrativeStyle,
     required String outputLanguage,
+    required bool weatherUsesImperialUnits,
+    /// When set (e.g. city-only on devices without on-device LLM), used instead of [region.displayName].
+    String? regionNameOverride,
     Map<String, CustomPersonaPromptContent> customPersonasById = const {},
     GuidePipelineListener? onPipelineEvent,
   }) async {
+    final name = regionNameOverride?.trim();
+    final regionName =
+        (name != null && name.isNotEmpty) ? name : region.displayName;
     return buildGuideForRegionName(
-      regionName: region.displayName,
+      regionName: regionName,
       speedMph: region.speedMph,
       latitude: region.position.latitude,
       longitude: region.position.longitude,
       narrativeStyle: narrativeStyle,
       outputLanguage: outputLanguage,
+      weatherUsesImperialUnits: weatherUsesImperialUnits,
       customPersonasById: customPersonasById,
       onPipelineEvent: onPipelineEvent,
     );
@@ -88,6 +95,7 @@ class ContextualGuideService {
     required double speedMph,
     required String narrativeStyle,
     required String outputLanguage,
+    required bool weatherUsesImperialUnits,
     Map<String, CustomPersonaPromptContent> customPersonasById = const {},
     double? latitude,
     double? longitude,
@@ -135,7 +143,13 @@ class ContextualGuideService {
       GuidePipelineStage.llm,
       'Generating city intro narration.',
     );
-    final generatedText = await _inferenceEngine.generateText(introPrompt);
+    final introGeneration = await _inferenceEngine.generateText(
+      introPrompt,
+      latitude: latitude,
+      longitude: longitude,
+      imperialWeatherUnits: weatherUsesImperialUnits,
+    );
+    final generatedText = introGeneration.text;
     _emit(
       onPipelineEvent,
       GuidePipelineStage.llm,
@@ -156,7 +170,8 @@ class ContextualGuideService {
       GuidePipelineStage.llm,
       'Extracting proper nouns for related links.',
     );
-    final entityResponse = await _inferenceEngine.generateText(entityPrompt);
+    final entityGeneration = await _inferenceEngine.generateText(entityPrompt);
+    final entityResponse = entityGeneration.text;
     _emit(
       onPipelineEvent,
       GuidePipelineStage.llm,
@@ -170,6 +185,7 @@ class ContextualGuideService {
       links: links,
       generatedAt: DateTime.now(),
       secondLlmRaw: entityResponse,
+      showOnDeviceUnavailableNotice: !introGeneration.usedOnDeviceModel,
     );
 
     if (_resourcePolicy.shouldStandbyAfterGeneration()) {

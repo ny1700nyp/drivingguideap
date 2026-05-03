@@ -85,5 +85,6 @@
   "voice": "Voix",
   "systemDefault": "Par défaut du système",
   "moreVoice": "Plus de voix ?",
-  "moreVoiceDescription": "Vous pouvez ajouter de nouvelles voix dans Réglages > Accessibilité > Contenu énoncé > Voix."
+  "moreVoiceDescription": "Vous pouvez ajouter de nouvelles voix dans Réglages > Accessibilité > Contenu énoncé > Voix.",
+  "onDeviceNarrationNotice": "L’IA sur l’appareil n’est pas active. Vérifiez les réglages système. Vérifiez aussi si cet appareil prend en charge l’IA sur l’appareil."
 }

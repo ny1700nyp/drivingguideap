@@ -132,5 +132,6 @@
   "voice": "Voice",
   "systemDefault": "System default",
   "moreVoice": "More voice?",
-  "moreVoiceDescription": "You can add new voices in Settings > Accessibility > Read & Speak > Voices."
+  "moreVoiceDescription": "You can add new voices in Settings > Accessibility > Read & Speak > Voices.",
+  "onDeviceNarrationNotice": "On-device AI is not active. Please check system settings. Also confirm whether this device supports on-device AI."
 }

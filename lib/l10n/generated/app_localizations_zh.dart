@@ -280,4 +280,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get moreVoiceDescription => '你可以在“设置 > 辅助功能 > 朗读内容 > 声音”中添加新语音。';
+
+  @override
+  String get onDeviceNarrationNotice => '设备端 AI 未启用。请检查系统设置，并确认本设备是否支持设备端 AI。';
 }

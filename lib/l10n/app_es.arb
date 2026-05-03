@@ -85,5 +85,6 @@
   "voice": "Voz",
   "systemDefault": "Predeterminada del sistema",
   "moreVoice": "¿Más voces?",
-  "moreVoiceDescription": "Puedes agregar nuevas voces en Configuración > Accesibilidad > Leer y hablar > Voces."
+  "moreVoiceDescription": "Puedes agregar nuevas voces en Configuración > Accesibilidad > Leer y hablar > Voces.",
+  "onDeviceNarrationNotice": "La IA en el dispositivo no está activa. Revisa los ajustes del sistema. Comprueba también si este dispositivo admite IA en el dispositivo."
 }

@@ -1,21 +1,10 @@
 import '../../models/guide_content.dart';
 
 class DynamicGuideTextService {
-  const DynamicGuideTextService({this.fastDrivingThresholdMph = 40});
+  const DynamicGuideTextService();
 
-  final double fastDrivingThresholdMph;
-
-  String selectText({required GuideContent guide, required double speedMph}) {
-    if (speedMph >= fastDrivingThresholdMph) {
-      return _limitLength(guide.shortText, 55);
-    }
+  /// Uses full LLM intro for speech and Live tab (same as stored history).
+  String selectText({required GuideContent guide}) {
     return guide.fullText;
-  }
-
-  String _limitLength(String text, int maxCharacters) {
-    if (text.length <= maxCharacters) {
-      return text;
-    }
-    return '${text.substring(0, maxCharacters).trimRight()}...';
   }
 }

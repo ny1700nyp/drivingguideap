@@ -13,6 +13,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 class MainActivity : FlutterActivity() {
     private val channelName = "drivingguide/local_llm"
@@ -150,15 +151,18 @@ private class AndroidLocalLLMService {
     }
 
     private suspend fun downloadModel(model: GenerativeModel): Boolean {
-        var downloaded = false
-        runCatching {
-            model.download().collect { status ->
-                if (status == DownloadStatus.DownloadCompleted) {
-                    downloaded = true
+        val downloaded = withTimeoutOrNull(20_000L) {
+            var ok = false
+            runCatching {
+                model.download().collect { status ->
+                    if (status == DownloadStatus.DownloadCompleted) {
+                        ok = true
+                    }
                 }
             }
+            ok
         }
-        return downloaded
+        return downloaded == true
     }
 
     private fun statusLabel(status: Int?): String {

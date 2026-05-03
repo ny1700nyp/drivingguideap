@@ -292,4 +292,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get moreVoiceDescription =>
       'You can add new voices in Settings > Accessibility > Read & Speak > Voices.';
+
+  @override
+  String get onDeviceNarrationNotice =>
+      'On-device AI is not active. Please check system settings. Also confirm whether this device supports on-device AI.';
 }

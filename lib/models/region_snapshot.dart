@@ -11,6 +11,8 @@ class RegionSnapshot {
     this.city,
     this.county,
     this.town,
+    /// Straight-line distance to nearest bundled city when resolved via [fromOfflinePlace].
+    this.offlineNearestDistanceMiles,
   });
 
   factory RegionSnapshot.fromPlacemark({
@@ -45,6 +47,82 @@ class RegionSnapshot {
       city: city,
       county: county,
       town: town,
+      offlineNearestDistanceMiles: null,
+    );
+  }
+
+  /// GeoNames offline resolution when platform reverse geocoding fails.
+  factory RegionSnapshot.fromOfflinePlace({
+    required Position position,
+    required DateTime recordedAt,
+    required String placeName,
+    required String countryCode,
+    String? admin1Name,
+    String? countyName,
+    double? offlineNearestDistanceMiles,
+  }) {
+    final name = placeName.trim();
+    final cc = countryCode.trim().toUpperCase();
+    final province = switch (admin1Name?.trim()) {
+      final p? when p.isNotEmpty => p,
+      _ => null,
+    };
+    final county = switch (countyName?.trim()) {
+      final c? when c.isNotEmpty => c,
+      _ => null,
+    };
+
+    final regionKeyParts = <String>[];
+    if (cc.isNotEmpty) {
+      regionKeyParts.add(cc);
+    }
+    if (province != null) {
+      regionKeyParts.add(province);
+    }
+    if (county != null) {
+      regionKeyParts.add(county);
+    }
+    regionKeyParts.add(name);
+    final regionKey = regionKeyParts.join('|');
+
+    final displayParts = <String>[name];
+    if (county != null) {
+      displayParts.add(county);
+    }
+    if (province != null) {
+      displayParts.add(province);
+    }
+    if (cc.isNotEmpty) {
+      displayParts.add(cc);
+    }
+    final displayName = displayParts.join(', ');
+
+    return RegionSnapshot(
+      regionKey: regionKey,
+      displayName: displayName,
+      position: position,
+      recordedAt: recordedAt,
+      state: province,
+      county: county,
+      city: name,
+      offlineNearestDistanceMiles: offlineNearestDistanceMiles,
+    );
+  }
+
+  /// Place labels unknown after OS geocoding and offline DB both miss.
+  /// [displayName] is empty; [regionKey] stays coordinate-based for deduping stream events.
+  factory RegionSnapshot.fromCoordinatesUnresolved({
+    required Position position,
+    required DateTime recordedAt,
+  }) {
+    final regionKey =
+        '${position.latitude.toStringAsFixed(3)},${position.longitude.toStringAsFixed(3)}';
+    return RegionSnapshot(
+      regionKey: regionKey,
+      displayName: '',
+      position: position,
+      recordedAt: recordedAt,
+      offlineNearestDistanceMiles: null,
     );
   }
 
@@ -56,6 +134,7 @@ class RegionSnapshot {
   final String? city;
   final String? county;
   final String? town;
+  final double? offlineNearestDistanceMiles;
 
   double get speedMph {
     final metersPerSecond = position.speed.isFinite && position.speed > 0

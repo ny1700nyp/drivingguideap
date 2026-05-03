@@ -1,13 +1,16 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../models/region_snapshot.dart';
+import 'offline_city_lookup.dart';
 
 class RegionLocationService {
-  RegionLocationService({this.pollInterval = const Duration(minutes: 1)});
+  RegionLocationService({this.pollInterval = const Duration(minutes: 2)});
 
   final Duration pollInterval;
   final _regionChanges = StreamController<RegionSnapshot>.broadcast();
@@ -45,20 +48,7 @@ class RegionLocationService {
       locationSettings: const LocationSettings(accuracy: LocationAccuracy.best),
     );
     final now = DateTime.now();
-    final placemarks = await placemarkFromCoordinates(
-      position.latitude,
-      position.longitude,
-    );
-
-    if (placemarks.isEmpty) {
-      throw StateError('Could not determine the current town.');
-    }
-
-    return RegionSnapshot.fromPlacemark(
-      placemark: placemarks.first,
-      position: position,
-      recordedAt: now,
-    );
+    return _snapshotForPosition(position, now);
   }
 
   Future<void> _handlePosition(Position position, {bool force = false}) async {
@@ -71,20 +61,7 @@ class RegionLocationService {
     }
 
     _lastGeocodeAt = now;
-    final placemarks = await placemarkFromCoordinates(
-      position.latitude,
-      position.longitude,
-    );
-
-    if (placemarks.isEmpty) {
-      return;
-    }
-
-    final snapshot = RegionSnapshot.fromPlacemark(
-      placemark: placemarks.first,
-      position: position,
-      recordedAt: now,
-    );
+    final snapshot = await _snapshotForPosition(position, now);
 
     if (_lastRegion?.regionKey == snapshot.regionKey) {
       _lastRegion = snapshot;
@@ -93,6 +70,78 @@ class RegionLocationService {
 
     _lastRegion = snapshot;
     _regionChanges.add(snapshot);
+  }
+
+  /// When connectivity suggests a network link, tries OS reverse geocoding
+  /// first. Otherwise skips it. If there is still no place name, tries
+  /// [OfflineCityLookup]. Final fallback: empty labels (no "Current area").
+  Future<RegionSnapshot> _snapshotForPosition(
+    Position position,
+    DateTime now,
+  ) async {
+    final online = await _appearsToHaveNetworkInterface();
+    if (online) {
+      List<Placemark> placemarks;
+      try {
+        placemarks = await placemarkFromCoordinates(
+          position.latitude,
+          position.longitude,
+        );
+      } catch (e, stackTrace) {
+        debugPrint('placemarkFromCoordinates failed: $e\n$stackTrace');
+        placemarks = const [];
+      }
+
+      if (placemarks.isNotEmpty) {
+        return RegionSnapshot.fromPlacemark(
+          placemark: placemarks.first,
+          position: position,
+          recordedAt: now,
+        );
+      }
+    }
+
+    final offline = await _offlinePlaceFromBundle(position, now);
+    if (offline != null) {
+      return offline;
+    }
+
+    return RegionSnapshot.fromCoordinatesUnresolved(
+      position: position,
+      recordedAt: now,
+    );
+  }
+
+  Future<bool> _appearsToHaveNetworkInterface() async {
+    try {
+      final results = await Connectivity().checkConnectivity();
+      return results.any((r) => r != ConnectivityResult.none);
+    } catch (e, stackTrace) {
+      debugPrint('Connectivity check failed: $e\n$stackTrace');
+      return true;
+    }
+  }
+
+  Future<RegionSnapshot?> _offlinePlaceFromBundle(
+    Position position,
+    DateTime now,
+  ) async {
+    final hit = await OfflineCityLookup.instance.nearest(
+      position.latitude,
+      position.longitude,
+    );
+    if (hit == null) {
+      return null;
+    }
+    return RegionSnapshot.fromOfflinePlace(
+      position: position,
+      recordedAt: now,
+      placeName: hit.placeName,
+      countryCode: hit.countryCode,
+      admin1Name: hit.admin1Name.isEmpty ? null : hit.admin1Name,
+      countyName: hit.countyName.isEmpty ? null : hit.countyName,
+      offlineNearestDistanceMiles: hit.distanceMiles,
+    );
   }
 
   Future<void> stop() async {

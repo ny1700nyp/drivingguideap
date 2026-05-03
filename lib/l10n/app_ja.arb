@@ -84,5 +84,6 @@
   "voice": "音声",
   "systemDefault": "システム標準",
   "moreVoice": "さらに音声を追加しますか？",
-  "moreVoiceDescription": "新しい音声は、設定 > アクセシビリティ > 読み上げコンテンツ > 声 から追加できます。"
+  "moreVoiceDescription": "新しい音声は、設定 > アクセシビリティ > 読み上げコンテンツ > 声 から追加できます。",
+  "onDeviceNarrationNotice": "オンデバイス AI が有効ではありません。システム設定を確認してください。この端末がオンデバイス AI に対応しているかも確認してください。"
 }

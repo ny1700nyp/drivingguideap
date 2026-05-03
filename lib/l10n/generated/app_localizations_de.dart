@@ -295,4 +295,8 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get moreVoiceDescription =>
       'Neue Stimmen kannst du unter Einstellungen > Bedienungshilfen > Gesprochene Inhalte > Stimmen hinzufügen.';
+
+  @override
+  String get onDeviceNarrationNotice =>
+      'On-device-KI ist nicht aktiv. Bitte die Systemeinstellungen prüfen. Prüfen Sie außerdem, ob dieses Gerät On-device-KI unterstützt.';
 }

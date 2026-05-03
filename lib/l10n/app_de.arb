@@ -85,5 +85,6 @@
   "voice": "Stimme",
   "systemDefault": "Systemstandard",
   "moreVoice": "Mehr Stimmen?",
-  "moreVoiceDescription": "Neue Stimmen kannst du unter Einstellungen > Bedienungshilfen > Gesprochene Inhalte > Stimmen hinzufügen."
+  "moreVoiceDescription": "Neue Stimmen kannst du unter Einstellungen > Bedienungshilfen > Gesprochene Inhalte > Stimmen hinzufügen.",
+  "onDeviceNarrationNotice": "On-device-KI ist nicht aktiv. Bitte die Systemeinstellungen prüfen. Prüfen Sie außerdem, ob dieses Gerät On-device-KI unterstützt."
 }

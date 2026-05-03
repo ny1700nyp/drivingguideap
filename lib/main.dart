@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,6 +13,7 @@ import 'features/audio/tts_audio_guide_service.dart';
 import 'features/guide/contextual_guide_service.dart';
 import 'features/guide/prompt_builder.dart';
 import 'features/guide/dynamic_guide_text_service.dart';
+import 'features/location/offline_city_lookup.dart';
 import 'features/location/region_location_service.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'models/guide_content.dart';
@@ -484,6 +486,8 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   StreamSubscription<RegionSnapshot>? _regionSubscription;
   StreamSubscription<SpeakingRange?>? _speakingRangeSubscription;
   RegionSnapshot? _currentRegion;
+  /// Last non-empty place label from a resolved [RegionSnapshot]; kept when a later snapshot has no name.
+  String? _lastResolvedAreaLabel;
   List<TtsVoice> _voices = const [];
   TtsVoice? _selectedVoice;
   String _voiceStatus = '';
@@ -505,6 +509,10 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   bool _isAiThinking = false;
   bool _showTestRouteControls = false;
   bool _showFirstLlmDebug = false;
+  bool _showOnDeviceNarrationNotice = false;
+  /// Before first [ContextualGuideService.getModelInfo], prefer full [RegionSnapshot.displayName].
+  /// When true (native on-device LLM unavailable), prompts and UI use primary city label only.
+  bool? _compactPlaceLabelsForDevice;
   bool _isIntroductionExpanded = false;
   int _selectedTabIndex = 0;
   int _liveGuideTapCount = 0;
@@ -548,6 +556,39 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
       });
     });
     unawaited(_loadSavedSettings());
+    unawaited(_refreshCompactPlaceLabelsFlag());
+  }
+
+  Future<void> _refreshCompactPlaceLabelsFlag() async {
+    try {
+      final info = await _contextualGuideService.getModelInfo();
+      if (!mounted) return;
+      setState(() {
+        _compactPlaceLabelsForDevice = info.usesFallback;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _compactPlaceLabelsForDevice = true;
+      });
+    }
+  }
+
+  /// First locality segment (city/town), omitting county/state/country suffixes from [displayName].
+  String _primaryCityPlaceLabel(RegionSnapshot region) {
+    final direct = region.city ?? region.town;
+    if (direct != null && direct.trim().isNotEmpty) {
+      return direct.trim().split(',').first.trim();
+    }
+    final dn = region.displayName.trim();
+    if (dn.isEmpty) return '';
+    return dn.split(',').first.trim();
+  }
+
+  String? _regionNameOverrideForGuide(RegionSnapshot region) {
+    if (_compactPlaceLabelsForDevice != true) return null;
+    final p = _primaryCityPlaceLabel(region);
+    return p.isEmpty ? null : p;
   }
 
   @override
@@ -926,6 +967,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
     try {
       await _stopTestRoute();
       await _ttsService.configure();
+      unawaited(OfflineCityLookup.instance.preload());
       setState(() {
         _isMonitoring = true;
         _isAiThinking = true;
@@ -1100,6 +1142,8 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
 
     final runId = ++_testRouteRunId;
     _playbackRunId++;
+    final outputLang = _llmOutputLanguage();
+    final weatherUsesImperialUnits = _localeUsesMiles(context);
     await _ttsService.stop();
     final stop = _sacramentoToSeattleRoute[index];
     _testRouteIndex = index + 1;
@@ -1117,18 +1161,29 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
     });
 
     try {
+      if (_compactPlaceLabelsForDevice == null) {
+        try {
+          final info = await _contextualGuideService.getModelInfo();
+          _compactPlaceLabelsForDevice = info.usesFallback;
+        } catch (_) {
+          _compactPlaceLabelsForDevice = true;
+        }
+      }
       final guide = await _contextualGuideService.buildGuideForRegionName(
-        regionName: stop,
+        regionName: _compactPlaceLabelsForDevice == true
+            ? stop.split(',').first.trim()
+            : stop,
         speedMph: 35,
         narrativeStyle: _narrativeStyle,
-        outputLanguage: _llmOutputLanguage(),
+        outputLanguage: outputLang,
+        weatherUsesImperialUnits: weatherUsesImperialUnits,
         customPersonasById: _customPersonasForPrompt(),
         onPipelineEvent: _handlePipelineEvent,
       );
       if (!mounted || runId != _testRouteRunId) {
         return;
       }
-      final text = _dynamicTextService.selectText(guide: guide, speedMph: 35);
+      final text = _dynamicTextService.selectText(guide: guide);
       _setGuideOutput(
         text: text,
         links: guide.links,
@@ -1147,8 +1202,22 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   }
 
   Future<void> _handleRegionChange(RegionSnapshot region) async {
+    if (_compactPlaceLabelsForDevice == null) {
+      try {
+        final info = await _contextualGuideService.getModelInfo();
+        _compactPlaceLabelsForDevice = info.usesFallback;
+      } catch (_) {
+        _compactPlaceLabelsForDevice = true;
+      }
+      if (!mounted) return;
+    }
+
+    final label = _areaLabelFromRegion(region);
     setState(() {
       _currentRegion = region;
+      if (label != null && label.isNotEmpty) {
+        _lastResolvedAreaLabel = label;
+      }
       if (!_isTestRouteRunning) {
         _currentTestStop = null;
       }
@@ -1159,26 +1228,37 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
       _isAiThinking = false;
     });
 
-    final guide = await _contextualGuideService.buildGuide(
-      region,
-      narrativeStyle: _narrativeStyle,
-      outputLanguage: _llmOutputLanguage(),
-      customPersonasById: _customPersonasForPrompt(),
-      onPipelineEvent: _handlePipelineEvent,
-    );
-    final text = _dynamicTextService.selectText(
-      guide: guide,
-      speedMph: region.speedMph,
-    );
-    _setGuideOutput(
-      text: text,
-      links: guide.links,
-      guideForHistory: guide,
-    );
+    final weatherUsesImperialUnits = _localeUsesMiles(context);
 
-    final playbackRunId = _beginPlayback();
-    await _ttsService.speak(text);
-    _completePlayback(playbackRunId);
+    try {
+      final guide = await _contextualGuideService.buildGuide(
+        region,
+        narrativeStyle: _narrativeStyle,
+        outputLanguage: _llmOutputLanguage(),
+        weatherUsesImperialUnits: weatherUsesImperialUnits,
+        regionNameOverride: _regionNameOverrideForGuide(region),
+        customPersonasById: _customPersonasForPrompt(),
+        onPipelineEvent: _handlePipelineEvent,
+      );
+      final text = _dynamicTextService.selectText(guide: guide);
+      _setGuideOutput(
+        text: text,
+        links: guide.links,
+        guideForHistory: guide,
+      );
+
+      final playbackRunId = _beginPlayback();
+      await _ttsService.speak(text);
+      _completePlayback(playbackRunId);
+    } catch (error, stackTrace) {
+      debugPrint('Guide pipeline failed: $error\n$stackTrace');
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isAiThinking = false;
+      });
+    }
   }
 
   Future<void> _selectVoice(TtsVoice? voice) async {
@@ -1207,6 +1287,8 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
       _resumeSpeakingIndex = 0;
       _isAiThinking = false;
       _magazineHistorySelectionKey = null;
+      _showOnDeviceNarrationNotice =
+          guideForHistory?.showOnDeviceUnavailableNotice ?? false;
       if (historyEntry != null) {
         _guideHistory = [
           historyEntry,
@@ -1368,6 +1450,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
                     ],
                   ),
                   const SizedBox(height: 8),
+                  _buildOnDeviceNarrationNotice(context),
                   Expanded(
                     child: StreamBuilder<SpeakingRange?>(
                       stream: _ttsService.speakingRanges,
@@ -1409,19 +1492,146 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
     );
   }
 
+  /// Place label from [region] only when city/town/displayName yield usable text.
+  String? _areaLabelFromRegion(RegionSnapshot region) {
+    if (_compactPlaceLabelsForDevice == true) {
+      final p = _primaryCityPlaceLabel(region);
+      if (p.isNotEmpty) return p;
+    }
+    final direct = region.city ?? region.town;
+    if (direct != null && direct.trim().isNotEmpty) {
+      return direct.trim();
+    }
+    final dn = region.displayName.trim();
+    if (dn.isNotEmpty) {
+      return dn.split(',').first.trim();
+    }
+    return null;
+  }
+
   String _currentAreaName() {
     final testStop = _currentTestStop;
     if (testStop != null) {
-      return testStop.split(',').first.trim();
+      return _compactPlaceLabelsForDevice == true
+          ? testStop.split(',').first.trim()
+          : testStop;
     }
 
     final region = _currentRegion;
     if (region == null) {
-      return _l10n.noLocationYet;
+      return _lastResolvedAreaLabel ?? _l10n.noLocationYet;
     }
 
-    final name = region.city ?? region.town ?? region.displayName.split(',').first;
-    return name.trim().isEmpty ? _l10n.currentArea : name.trim();
+    final fromRegion = _areaLabelFromRegion(region);
+    if (fromRegion != null && fromRegion.isNotEmpty) {
+      return fromRegion;
+    }
+
+    return _lastResolvedAreaLabel ?? _l10n.noLocationYet;
+  }
+
+  /// App [supportedLocales] uses plain [Locale('en')] without a region, so
+  /// [Localizations.localeOf] often has no [countryCode]. Use the OS locale
+  /// (e.g. iOS English (US) → `en_US`) when deciding miles vs km and °F vs °C.
+  static bool _localeUsesMiles(BuildContext context) {
+    bool enUnitedStates(Locale l) {
+      if (l.languageCode != 'en') return false;
+      final cc = l.countryCode;
+      return cc != null &&
+          cc.isNotEmpty &&
+          cc.toUpperCase() == 'US';
+    }
+
+    if (enUnitedStates(Localizations.localeOf(context))) return true;
+    if (enUnitedStates(WidgetsBinding.instance.platformDispatcher.locale)) {
+      return true;
+    }
+
+    if (kIsWeb) return false;
+    try {
+      final normalized =
+          Platform.localeName.toLowerCase().replaceAll('-', '_');
+      return normalized.startsWith('en_us');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  String _formatNearestCityDistance(BuildContext context, double miles) {
+    final locale = Localizations.localeOf(context);
+    final nf = NumberFormat.decimalPatternDigits(
+      locale: locale.toLanguageTag(),
+      decimalDigits: 1,
+    );
+    if (_localeUsesMiles(context)) {
+      return '${nf.format(miles)}\u00a0mi';
+    }
+    final km = miles * 1.609344;
+    return '${nf.format(km)}\u00a0km';
+  }
+
+  /// [_currentAreaName] plus bundled nearest-city distance when the current
+  /// snapshot came from offline GeoNames lookup.
+  String _currentAreaDisplayLabel(BuildContext context) {
+    final base = _currentAreaName();
+    final miles = _currentRegion?.offlineNearestDistanceMiles;
+    if (miles == null) {
+      return base;
+    }
+    return '$base · ${_formatNearestCityDistance(context, miles)}';
+  }
+
+  Widget _buildOnDeviceNarrationNotice(
+    BuildContext context, {
+    bool onDarkBackdrop = false,
+  }) {
+    if (!_showOnDeviceNarrationNotice) {
+      return const SizedBox.shrink();
+    }
+    final l10n = _l10n;
+    final text = l10n.onDeviceNarrationNotice;
+    final scheme = Theme.of(context).colorScheme;
+    final fg = onDarkBackdrop ? Colors.white.withValues(alpha: 0.92) : scheme.onSecondaryContainer;
+    final iconColor =
+        onDarkBackdrop ? Colors.white.withValues(alpha: 0.85) : scheme.onSecondaryContainer;
+    return Padding(
+      padding: EdgeInsets.only(bottom: onDarkBackdrop ? 10 : 12, top: onDarkBackdrop ? 6 : 0),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: onDarkBackdrop
+              ? Colors.black.withValues(alpha: 0.42)
+              : scheme.secondaryContainer.withValues(alpha: 0.88),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: onDarkBackdrop ? Colors.white24 : scheme.outlineVariant,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.info_outline_rounded,
+                color: iconColor,
+                size: 22,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  text,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: fg,
+                        height: 1.45,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   _GuideHistoryEntry? _resolvedMagazineHistoryEntry() {
@@ -1450,7 +1660,15 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
     final testStop = _currentTestStop;
     if (testStop != null) return testStop;
     final region = _currentRegion;
-    if (region != null) return region.displayName;
+    if (region != null) {
+      if (_compactPlaceLabelsForDevice == true) {
+        final p = _primaryCityPlaceLabel(region);
+        if (p.isNotEmpty) return p;
+      }
+      final d = region.displayName.trim();
+      if (d.isNotEmpty) return d;
+      return _currentAreaName();
+    }
     return _currentAreaName();
   }
 
@@ -1469,17 +1687,22 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   }
 
   Widget _buildLiveGuideTab(BuildContext context) {
-    final areaName = _currentAreaName();
+    final areaTitle = _currentAreaDisplayLabel(context);
+    final areaQuery = _currentAreaName();
     final l10n = _l10n;
     final hasNarrative = _preparedTtsText.trim().isNotEmpty;
     final backgroundUrl =
-        'https://source.unsplash.com/1200x900/?${Uri.encodeComponent('$areaName city landscape road')}';
+        'https://source.unsplash.com/1200x900/?${Uri.encodeComponent('$areaQuery city landscape road')}';
 
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
         _HeroGuideCard(
-          areaName: areaName,
+          narrationNotice: _buildOnDeviceNarrationNotice(
+            context,
+            onDarkBackdrop: true,
+          ),
+          areaName: areaTitle,
           imageUrl: backgroundUrl,
           narrative: hasNarrative
               ? _preparedTtsText
@@ -1923,7 +2146,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
     return Scaffold(
       appBar: AppBar(
         title: _AppTitle(
-          currentAreaName: _currentAreaName(),
+          currentAreaName: _currentAreaDisplayLabel(context),
           hasCurrentArea: canOpenDetails,
           onAreaTap: () => _openSearchOrMap(
             label: _currentAreaName(),
@@ -2269,6 +2492,7 @@ class _IntroductionCard extends StatelessWidget {
 
 class _HeroGuideCard extends StatelessWidget {
   const _HeroGuideCard({
+    required this.narrationNotice,
     required this.areaName,
     required this.imageUrl,
     required this.narrative,
@@ -2283,6 +2507,7 @@ class _HeroGuideCard extends StatelessWidget {
     required this.onExpand,
   });
 
+  final Widget narrationNotice;
   final String areaName;
   final String imageUrl;
   final String narrative;
@@ -2345,6 +2570,17 @@ class _HeroGuideCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(
+                  areaName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+                narrationNotice,
+                const SizedBox(height: 12),
                 if (isCompleted) ...[
                   Text(
                     l10n.cruisingTowardsNextDiscovery,

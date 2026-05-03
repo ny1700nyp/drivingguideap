@@ -617,6 +617,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You can add new voices in Settings > Accessibility > Read & Speak > Voices.'**
   String get moreVoiceDescription;
+
+  /// No description provided for @onDeviceNarrationNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'On-device AI is not active. Please check system settings. Also confirm whether this device supports on-device AI.'**
+  String get onDeviceNarrationNotice;
 }
 
 class _AppLocalizationsDelegate

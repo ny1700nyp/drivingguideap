@@ -294,4 +294,8 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get moreVoiceDescription =>
       'Vous pouvez ajouter de nouvelles voix dans Réglages > Accessibilité > Contenu énoncé > Voix.';
+
+  @override
+  String get onDeviceNarrationNotice =>
+      'L’IA sur l’appareil n’est pas active. Vérifiez les réglages système. Vérifiez aussi si cet appareil prend en charge l’IA sur l’appareil.';
 }

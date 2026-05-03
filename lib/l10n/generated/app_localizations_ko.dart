@@ -284,4 +284,8 @@ class AppLocalizationsKo extends AppLocalizations {
   @override
   String get moreVoiceDescription =>
       '새 보이스는 설정 > 손쉬운 사용 > 읽기 및 말하기 > 보이스에서 추가할 수 있습니다.';
+
+  @override
+  String get onDeviceNarrationNotice =>
+      '온디바이스 AI가 활성화되어 있지 않습니다. 시스템 설정을 확인해 주세요. 이 기기가 온디바이스 AI를 지원하는지도 확인해 보세요.';
 }

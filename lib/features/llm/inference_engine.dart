@@ -1,8 +1,24 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
 
+import '../guide/friendly_fallback_city_narration.dart';
+import '../weather/open_meteo_weather_service.dart';
+
 enum InferenceEngineState { unloaded, loading, ready, generating, standby }
+
+/// Result of [InferenceEngine.generateText]: synthesis text and whether it came
+/// from the native on-device model (false means Dart/template fallback).
+class LlmGenerationResult {
+  const LlmGenerationResult({
+    required this.text,
+    required this.usedOnDeviceModel,
+  });
+
+  final String text;
+  final bool usedOnDeviceModel;
+}
 
 class LlmModelInfo {
   const LlmModelInfo({
@@ -72,33 +88,77 @@ class InferenceEngine {
     try {
       await _methodChannel.invokeMethod<void>('loadModel', {
         'modelId': modelId,
-      });
-      _state = InferenceEngineState.ready;
+      }).timeout(const Duration(seconds: 45));
     } on MissingPluginException {
-      _state = InferenceEngineState.ready;
+      // Native hook absent; generation uses Dart fallback.
     } on PlatformException {
+      // Unsupported device or OS build.
+    } on TimeoutException {
+      // e.g. Android Gemini Nano download blocked offline — proceed to fallback path.
+    } finally {
       _state = InferenceEngineState.ready;
     }
   }
 
-  Future<String> generateText(String prompt) async {
+  Future<LlmGenerationResult> generateText(
+    String prompt, {
+    double? latitude,
+    double? longitude,
+    bool imperialWeatherUnits = false,
+  }) async {
     if (!isLoaded) {
       await loadModel();
     }
 
     _state = InferenceEngineState.generating;
     try {
-      final result = await _methodChannel.invokeMethod<String>('generateText', {
-        'prompt': prompt,
-      });
+      final result = await _methodChannel
+          .invokeMethod<String>('generateText', {
+            'prompt': prompt,
+          })
+          .timeout(const Duration(seconds: 90));
       if (result == null || _looksLikeAssistantChatter(result)) {
-        return _fallbackGeneration(prompt);
+        return LlmGenerationResult(
+          text: await _fallbackGenerationAsync(
+            prompt,
+            latitude: latitude,
+            longitude: longitude,
+            imperialWeatherUnits: imperialWeatherUnits,
+          ),
+          usedOnDeviceModel: false,
+        );
       }
-      return result;
+      return LlmGenerationResult(text: result, usedOnDeviceModel: true);
     } on MissingPluginException {
-      return _fallbackGeneration(prompt);
+      return LlmGenerationResult(
+        text: await _fallbackGenerationAsync(
+          prompt,
+          latitude: latitude,
+          longitude: longitude,
+          imperialWeatherUnits: imperialWeatherUnits,
+        ),
+        usedOnDeviceModel: false,
+      );
     } on PlatformException {
-      return _fallbackGeneration(prompt);
+      return LlmGenerationResult(
+        text: await _fallbackGenerationAsync(
+          prompt,
+          latitude: latitude,
+          longitude: longitude,
+          imperialWeatherUnits: imperialWeatherUnits,
+        ),
+        usedOnDeviceModel: false,
+      );
+    } on TimeoutException {
+      return LlmGenerationResult(
+        text: await _fallbackGenerationAsync(
+          prompt,
+          latitude: latitude,
+          longitude: longitude,
+          imperialWeatherUnits: imperialWeatherUnits,
+        ),
+        usedOnDeviceModel: false,
+      );
     } finally {
       _state = InferenceEngineState.ready;
     }
@@ -128,6 +188,45 @@ class InferenceEngine {
       // Unsupported devices can keep using the Dart fallback path.
     }
     _state = InferenceEngineState.unloaded;
+  }
+
+  /// Weather-enhanced friendly rotation when the city intro regex matches; otherwise [prompt].
+  Future<String> _fallbackGenerationAsync(
+    String prompt, {
+    double? latitude,
+    double? longitude,
+    bool imperialWeatherUnits = false,
+  }) async {
+    final cityIntroMatch =
+        RegExp(r'City:\s*([^\n]+)', caseSensitive: false).firstMatch(prompt) ??
+        RegExp(r'도시:\s*([^\n]+)').firstMatch(prompt) ??
+        RegExp(r'都市:\s*([^\n]+)').firstMatch(prompt) ??
+        RegExp(r'城市:\s*([^\n]+)').firstMatch(prompt) ??
+        RegExp(r'Stadt:\s*([^\n]+)').firstMatch(prompt) ??
+        RegExp(r'Ville:\s*([^\n]+)').firstMatch(prompt) ??
+        RegExp(
+          r'traveling through ([^\.\n]+)',
+          caseSensitive: false,
+        ).firstMatch(prompt);
+    final cityName = cityIntroMatch?.group(1)?.trim();
+    if (cityName != null && cityName.isNotEmpty) {
+      final outputLanguage = _fallbackOutputLanguage(prompt);
+      String? weatherPhrase;
+      if (latitude != null && longitude != null) {
+        weatherPhrase = await OpenMeteoWeatherService.fetchCurrentBrief(
+          latitude: latitude,
+          longitude: longitude,
+          imperial: imperialWeatherUnits,
+          outputLanguage: outputLanguage,
+        );
+      }
+      return FriendlyFallbackCityNarration.pick(
+        cityName: cityName,
+        outputLanguage: outputLanguage,
+        weatherPhrase: weatherPhrase,
+      );
+    }
+    return _fallbackGeneration(prompt);
   }
 
   String _fallbackGeneration(String prompt) {
@@ -162,23 +261,6 @@ class InferenceEngine {
       }
       return 'As you pass through $cityName, here is the quick local story. '
           '${factLines.join(' ')}';
-    }
-
-    final cityIntroMatch =
-        RegExp(r'City:\s*([^\n]+)', caseSensitive: false).firstMatch(prompt) ??
-        RegExp(r'도시:\s*([^\n]+)').firstMatch(prompt) ??
-        RegExp(r'都市:\s*([^\n]+)').firstMatch(prompt) ??
-        RegExp(r'城市:\s*([^\n]+)').firstMatch(prompt) ??
-        RegExp(r'Stadt:\s*([^\n]+)').firstMatch(prompt) ??
-        RegExp(r'Ville:\s*([^\n]+)').firstMatch(prompt) ??
-        RegExp(
-          r'traveling through ([^\.\n]+)',
-          caseSensitive: false,
-        ).firstMatch(prompt);
-    final cityName = cityIntroMatch?.group(1)?.trim();
-    if (cityName != null && cityName.isNotEmpty) {
-      final outputLanguage = _fallbackOutputLanguage(prompt);
-      return _fallbackCityIntro(cityName, outputLanguage);
     }
 
     final apiContext = RegExp(
@@ -233,25 +315,6 @@ class InferenceEngine {
       return 'French';
     }
     return 'English';
-  }
-
-  String _fallbackCityIntro(String cityName, String outputLanguage) {
-    return switch (outputLanguage.toLowerCase()) {
-      'korean' =>
-        '$cityName을 지나며, 이 도시는 잠깐 스쳐 가는 지명이 아니라 하나의 짧은 로드 다큐멘터리처럼 펼쳐집니다. 거리의 형태와 오래된 랜드마크, 주변의 자연 풍경은 이곳이 어떤 산업과 사람들, 어떤 이동의 흐름 속에서 성장해 왔는지를 조용히 보여줍니다. 창밖으로 보이는 평범한 건물과 도로도 사실은 지역의 기억을 품고 있고, 그 사이로 축제, 음식, 동네의 이름 같은 작은 단서들이 도시의 성격을 만들어 냅니다. 지금 이 순간에는 목적지보다, 이 도시가 남긴 흔적을 천천히 지나가며 발견하는 시간이 더 오래 기억될지도 모릅니다.',
-      'japanese' =>
-        '$cityNameを通り抜けると、この街は短いロードドキュメンタリーのように姿を見せます。古い通りやランドマーク、周囲の風景が、この場所を形づくった人々と今も続く物語を語っています。',
-      'chinese' =>
-        '当你经过$cityName时，这座城市像一段短小的公路纪录片般展开。街道、旧地标和周围景观，都在暗示塑造这里的人们以及仍在延续的故事。',
-      'spanish' =>
-        'Al pasar por $cityName, la ciudad se abre como un breve documental de carretera: sus calles, antiguos lugares emblemáticos y paisajes cercanos insinúan a las personas que la moldearon y las historias que aún la recorren.',
-      'german' =>
-        'Während du durch $cityName fährst, öffnet sich die Stadt wie eine kurze Straßendokumentation: ihre Straßen, älteren Wahrzeichen und die umliegende Landschaft erzählen von den Menschen, die sie geprägt haben, und von Geschichten, die bis heute weiterleben.',
-      'french' =>
-        'En traversant $cityName, la ville s’ouvre comme un bref documentaire de route : ses rues, ses anciens repères et le paysage alentour évoquent les personnes qui l’ont façonnée et les histoires qui continuent d’y circuler.',
-      _ =>
-        'As you travel through $cityName, let the city open like a brief roadside documentary: its streets, older landmarks, and surrounding landscape all hint at the people who shaped it and the stories still moving through it today.',
-    };
   }
 
   List<Map<String, String>> _fallbackEntities(String narration) {
