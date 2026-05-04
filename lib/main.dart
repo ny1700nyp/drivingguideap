@@ -1657,7 +1657,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
         icon: Icons.local_florist,
         body: l10n.goodsBody,
         query: '$queryContext local products wine beer seafood agriculture',
-        opensMap: false,
+        opensMap: true,
       ),
       _DetailCardData(
         title: l10n.trivia,
