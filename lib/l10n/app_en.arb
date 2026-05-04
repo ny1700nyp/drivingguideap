@@ -140,5 +140,12 @@
   "systemDefault": "System default",
   "moreVoice": "More voice?",
   "moreVoiceDescription": "You can add new voices in Settings > Accessibility > Read & Speak > Voices.",
-  "onDeviceNarrationNotice": "On-device AI is not active. Please check system settings. Also confirm whether this device supports on-device AI."
+  "onDeviceNarrationNotice": "On-device AI is not active. Please check system settings. Also confirm whether this device supports on-device AI.",
+  "idleActivityTimeoutTitle": "Twingl Road paused",
+  "idleActivityTimeoutBody": "Your location has stayed within about one mile for 30 minutes without significant movement, so guiding has paused automatically. Turn guiding on again when you are ready to drive.",
+  "supportSectionTitle": "Support",
+  "helpAndSupport": "Help and Support",
+  "termsOfService": "Terms of Service",
+  "privacyPolicyMenu": "Privacy Policy",
+  "supportDocumentLoadError": "Could not load this document. Check your connection and try again."
 }

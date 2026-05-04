@@ -93,5 +93,12 @@
   "systemDefault": "Predeterminada del sistema",
   "moreVoice": "¿Más voces?",
   "moreVoiceDescription": "Puedes agregar nuevas voces en Configuración > Accesibilidad > Leer y hablar > Voces.",
-  "onDeviceNarrationNotice": "La IA en el dispositivo no está activa. Revisa los ajustes del sistema. Comprueba también si este dispositivo admite IA en el dispositivo."
+  "onDeviceNarrationNotice": "La IA en el dispositivo no está activa. Revisa los ajustes del sistema. Comprueba también si este dispositivo admite IA en el dispositivo.",
+  "idleActivityTimeoutTitle": "Twingl Road en pausa",
+  "idleActivityTimeoutBody": "Tu ubicación se ha mantenido dentro de una milla durante unos 30 minutos sin movimiento significativo, así que la guía se ha pausado automáticamente. Vuelve a activarla cuando estés listo para conducir.",
+  "supportSectionTitle": "Soporte",
+  "helpAndSupport": "Ayuda y soporte",
+  "termsOfService": "Términos del servicio",
+  "privacyPolicyMenu": "Política de privacidad",
+  "supportDocumentLoadError": "No se pudo cargar este documento. Comprueba la conexión e inténtalo de nuevo."
 }

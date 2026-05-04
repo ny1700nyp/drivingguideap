@@ -322,4 +322,27 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get onDeviceNarrationNotice =>
       'L’IA sur l’appareil n’est pas active. Vérifiez les réglages système. Vérifiez aussi si cet appareil prend en charge l’IA sur l’appareil.';
+
+  @override
+  String get idleActivityTimeoutTitle => 'Twingl Road en pause';
+
+  @override
+  String get idleActivityTimeoutBody =>
+      'Votre position est restée dans un rayon d’environ un mile pendant 30 minutes sans mouvement notable, donc le guidage a été mis en pause automatiquement. Réactivez-le lorsque vous reprendrez la route.';
+
+  @override
+  String get supportSectionTitle => 'Assistance';
+
+  @override
+  String get helpAndSupport => 'Aide et assistance';
+
+  @override
+  String get termsOfService => 'Conditions d’utilisation';
+
+  @override
+  String get privacyPolicyMenu => 'Politique de confidentialité';
+
+  @override
+  String get supportDocumentLoadError =>
+      'Impossible de charger ce document. Vérifiez votre connexion et réessayez.';
 }

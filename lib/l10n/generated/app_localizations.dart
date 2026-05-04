@@ -665,6 +665,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'On-device AI is not active. Please check system settings. Also confirm whether this device supports on-device AI.'**
   String get onDeviceNarrationNotice;
+
+  /// No description provided for @idleActivityTimeoutTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Twingl Road paused'**
+  String get idleActivityTimeoutTitle;
+
+  /// No description provided for @idleActivityTimeoutBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your location has stayed within about one mile for 30 minutes without significant movement, so guiding has paused automatically. Turn guiding on again when you are ready to drive.'**
+  String get idleActivityTimeoutBody;
+
+  /// No description provided for @supportSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Support'**
+  String get supportSectionTitle;
+
+  /// No description provided for @helpAndSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'Help and Support'**
+  String get helpAndSupport;
+
+  /// No description provided for @termsOfService.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms of Service'**
+  String get termsOfService;
+
+  /// No description provided for @privacyPolicyMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy Policy'**
+  String get privacyPolicyMenu;
+
+  /// No description provided for @supportDocumentLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load this document. Check your connection and try again.'**
+  String get supportDocumentLoadError;
 }
 
 class _AppLocalizationsDelegate

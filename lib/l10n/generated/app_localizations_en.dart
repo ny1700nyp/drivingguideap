@@ -319,4 +319,27 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get onDeviceNarrationNotice =>
       'On-device AI is not active. Please check system settings. Also confirm whether this device supports on-device AI.';
+
+  @override
+  String get idleActivityTimeoutTitle => 'Twingl Road paused';
+
+  @override
+  String get idleActivityTimeoutBody =>
+      'Your location has stayed within about one mile for 30 minutes without significant movement, so guiding has paused automatically. Turn guiding on again when you are ready to drive.';
+
+  @override
+  String get supportSectionTitle => 'Support';
+
+  @override
+  String get helpAndSupport => 'Help and Support';
+
+  @override
+  String get termsOfService => 'Terms of Service';
+
+  @override
+  String get privacyPolicyMenu => 'Privacy Policy';
+
+  @override
+  String get supportDocumentLoadError =>
+      'Could not load this document. Check your connection and try again.';
 }

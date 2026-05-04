@@ -93,5 +93,12 @@
   "systemDefault": "Systemstandard",
   "moreVoice": "Mehr Stimmen?",
   "moreVoiceDescription": "Neue Stimmen kannst du unter Einstellungen > Bedienungshilfen > Gesprochene Inhalte > Stimmen hinzufügen.",
-  "onDeviceNarrationNotice": "On-device-KI ist nicht aktiv. Bitte die Systemeinstellungen prüfen. Prüfen Sie außerdem, ob dieses Gerät On-device-KI unterstützt."
+  "onDeviceNarrationNotice": "On-device-KI ist nicht aktiv. Bitte die Systemeinstellungen prüfen. Prüfen Sie außerdem, ob dieses Gerät On-device-KI unterstützt.",
+  "idleActivityTimeoutTitle": "Twingl Road pausiert",
+  "idleActivityTimeoutBody": "Ihr Standort blieb etwa 30 Minuten lang innerhalb von einer Meile ohne nennenswerte Bewegung. Die Führung wurde daher automatisch pausiert. Starten Sie sie wieder, wenn Sie weiterfahren möchten.",
+  "supportSectionTitle": "Support",
+  "helpAndSupport": "Hilfe und Support",
+  "termsOfService": "Nutzungsbedingungen",
+  "privacyPolicyMenu": "Datenschutzerklärung",
+  "supportDocumentLoadError": "Dieses Dokument konnte nicht geladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
 }

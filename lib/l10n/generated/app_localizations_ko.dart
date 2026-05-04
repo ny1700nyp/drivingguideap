@@ -311,4 +311,27 @@ class AppLocalizationsKo extends AppLocalizations {
   @override
   String get onDeviceNarrationNotice =>
       '온디바이스 AI가 활성화되어 있지 않습니다. 시스템 설정을 확인해 주세요. 이 기기가 온디바이스 AI를 지원하는지도 확인해 보세요.';
+
+  @override
+  String get idleActivityTimeoutTitle => 'Twingl Road 일시정지';
+
+  @override
+  String get idleActivityTimeoutBody =>
+      '약 30분 동안 위치가 1마일 안에서 크게 움직이지 않아 가이드가 자동으로 일시정지되었습니다. 운전을 다시 시작할 때 가이드를 켜 주세요.';
+
+  @override
+  String get supportSectionTitle => '지원';
+
+  @override
+  String get helpAndSupport => '도움말 및 고객 지원';
+
+  @override
+  String get termsOfService => '이용약관';
+
+  @override
+  String get privacyPolicyMenu => '개인정보 처리방침';
+
+  @override
+  String get supportDocumentLoadError =>
+      '문서를 불러오지 못했습니다. 네트워크 연결을 확인한 뒤 다시 시도해 주세요.';
 }

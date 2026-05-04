@@ -323,4 +323,27 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get onDeviceNarrationNotice =>
       'On-device-KI ist nicht aktiv. Bitte die Systemeinstellungen prüfen. Prüfen Sie außerdem, ob dieses Gerät On-device-KI unterstützt.';
+
+  @override
+  String get idleActivityTimeoutTitle => 'Twingl Road pausiert';
+
+  @override
+  String get idleActivityTimeoutBody =>
+      'Ihr Standort blieb etwa 30 Minuten lang innerhalb von einer Meile ohne nennenswerte Bewegung. Die Führung wurde daher automatisch pausiert. Starten Sie sie wieder, wenn Sie weiterfahren möchten.';
+
+  @override
+  String get supportSectionTitle => 'Support';
+
+  @override
+  String get helpAndSupport => 'Hilfe und Support';
+
+  @override
+  String get termsOfService => 'Nutzungsbedingungen';
+
+  @override
+  String get privacyPolicyMenu => 'Datenschutzerklärung';
+
+  @override
+  String get supportDocumentLoadError =>
+      'Dieses Dokument konnte nicht geladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.';
 }

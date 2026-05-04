@@ -5,6 +5,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -15,6 +16,9 @@ import 'features/guide/prompt_builder.dart';
 import 'features/guide/dynamic_guide_text_service.dart';
 import 'features/location/offline_city_lookup.dart';
 import 'features/location/region_location_service.dart';
+import 'features/location/stationary_pause_monitor.dart';
+import 'features/support/remote_markdown_page.dart';
+import 'features/support/support_document_urls.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'models/guide_content.dart';
 import 'models/region_snapshot.dart';
@@ -465,6 +469,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   static const _systemVoicePreferenceValue = 'system-default';
 
   final _locationService = RegionLocationService();
+  final _stationaryPauseMonitor = StationaryPauseMonitor();
   final _contextualGuideService = ContextualGuideService();
   final _dynamicTextService = const DynamicGuideTextService();
   final _ttsService = TtsAudioGuideService();
@@ -966,6 +971,9 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
         _resumeSpeakingIndex = 0;
       });
       await _locationService.start();
+      _stationaryPauseMonitor.start(
+        onIdleTimeout: _onStationaryIdleTimeout,
+      );
     } catch (error) {
       if (mounted) {
         setState(() {
@@ -973,6 +981,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
           _isAiThinking = false;
         });
       }
+      _stationaryPauseMonitor.stop();
       debugPrint('Could not start monitoring: $error');
     }
   }
@@ -1006,8 +1015,12 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
 
   Future<void> _stopMonitoring() async {
     _playbackRunId++;
+    _stationaryPauseMonitor.stop();
     await _locationService.stop();
     await _ttsService.stop();
+    if (!mounted) {
+      return;
+    }
     setState(() {
       _isMonitoring = false;
       _isAiThinking = false;
@@ -1017,6 +1030,39 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
       _isPlaybackCompleted = false;
       _resumeSpeakingIndex = 0;
     });
+  }
+
+  Future<void> _onStationaryIdleTimeout() async {
+    if (!mounted || !_isMonitoring) {
+      return;
+    }
+    HapticFeedback.heavyImpact();
+    Future<void>.delayed(const Duration(milliseconds: 120), () {
+      if (mounted) {
+        HapticFeedback.mediumImpact();
+      }
+    });
+    await _stopMonitoring();
+    if (!mounted) {
+      return;
+    }
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx);
+        return AlertDialog(
+          title: Text(l10n.idleActivityTimeoutTitle),
+          content: Text(l10n.idleActivityTimeoutBody),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(l10n.confirm),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _handleRegionChange(RegionSnapshot region) async {
@@ -1054,15 +1100,25 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
         customPersonasById: _customPersonasForPrompt(),
         onPipelineEvent: _handlePipelineEvent,
       );
+      if (!mounted || !_isMonitoring) {
+        return;
+      }
       final text = _dynamicTextService.selectText(guide: guide);
       _setGuideOutput(
         text: text,
         links: guide.links,
         guideForHistory: guide,
       );
+      if (!mounted || !_isMonitoring) {
+        return;
+      }
 
       final playbackRunId = _beginPlayback();
       await _ttsService.speak(text);
+      if (!mounted || !_isMonitoring) {
+        await _ttsService.stop();
+        return;
+      }
       _completePlayback(playbackRunId);
     } catch (error, stackTrace) {
       debugPrint('Guide pipeline failed: $error\n$stackTrace');
@@ -1141,7 +1197,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   }
 
   Future<void> _replayNarrative() async {
-    if (_preparedTtsText.trim().isEmpty) {
+    if (!_isMonitoring || _preparedTtsText.trim().isEmpty) {
       return;
     }
     final playbackRunId = _beginPlayback();
@@ -1151,6 +1207,9 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   }
 
   Future<void> _togglePlayback() async {
+    if (!_isMonitoring) {
+      return;
+    }
     if (_isPlaybackPaused) {
       final resumeIndex = _resumeSpeakingIndex;
       final playbackRunId = _beginPlayback();
@@ -1988,6 +2047,65 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
             ],
           ),
         ),
+        const SizedBox(height: 12),
+        _StatusCard(
+          title: l10n.supportSectionTitle,
+          child: Column(
+            children: [
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.help_outline),
+                title: Text(l10n.helpAndSupport),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      fullscreenDialog: true,
+                      builder: (ctx) => RemoteMarkdownPage(
+                        title: l10n.helpAndSupport,
+                        rawUrl: SupportDocumentUrls.helpAndSupport,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.article_outlined),
+                title: Text(l10n.termsOfService),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      fullscreenDialog: true,
+                      builder: (ctx) => RemoteMarkdownPage(
+                        title: l10n.termsOfService,
+                        rawUrl: SupportDocumentUrls.termsOfService,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.privacy_tip_outlined),
+                title: Text(l10n.privacyPolicyMenu),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      fullscreenDialog: true,
+                      builder: (ctx) => RemoteMarkdownPage(
+                        title: l10n.privacyPolicyMenu,
+                        rawUrl: SupportDocumentUrls.privacyPolicy,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -1996,6 +2114,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   void dispose() {
     _regionSubscription?.cancel();
     _speakingRangeSubscription?.cancel();
+    _stationaryPauseMonitor.stop();
     unawaited(_locationService.dispose());
     unawaited(_contextualGuideService.dispose());
     unawaited(_ttsService.dispose());
@@ -3054,18 +3173,20 @@ class _VoiceSelector extends StatelessWidget {
           status.isEmpty ? l10n.loadingVoices : status,
           style: Theme.of(context).textTheme.bodySmall,
         ),
-        const SizedBox(height: 12),
-        Text(
-          l10n.moreVoice,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w800,
+        if (!Platform.isAndroid) ...[
+          const SizedBox(height: 12),
+          Text(
+            l10n.moreVoice,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          l10n.moreVoiceDescription,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
+          const SizedBox(height: 4),
+          Text(
+            l10n.moreVoiceDescription,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
       ],
     );
   }
