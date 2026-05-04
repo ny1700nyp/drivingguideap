@@ -129,14 +129,26 @@ abstract class AppLocalizations {
   /// No description provided for @introductionSummary.
   ///
   /// In en, this message translates to:
-  /// **'Learn what Twingl Road does and how to use it on the road.'**
+  /// **'Live Guide layout, automatic guiding, Magazine links, and More settings—how they work together.'**
   String get introductionSummary;
 
-  /// No description provided for @introductionBody.
+  /// No description provided for @introductionBodyMain.
   ///
   /// In en, this message translates to:
-  /// **'Twingl Road is an audio-first travel guide for the road. As you pass through cities and towns, it introduces local history, landmarks, scenery, food, festivals, and notable people in a cinematic documentary style.\n\nUse Start Guiding when you want the app to automatically introduce each new town as you enter it. Use Check This Town when you want a one-time guide for your current location without continuous monitoring.\n\nThe Magazine tab gives you related links for the current area. Place links open in Maps, while people, events, and cultural references open in browser search.\n\nIn More, you can choose the narration persona, check the current system language, and select a premium or enhanced TTS voice. On iOS, matching Settings > Apple Intelligence & Siri > Language with the app language can help local AI narration work more naturally.'**
-  String get introductionBody;
+  /// **'Twingl Road is an audio-first travel guide for the road. As you pass through cities and towns, it introduces local history, landmarks, scenery, food, festivals, and notable people in a cinematic documentary style.\n\nWhen you open the app, guiding starts automatically so new towns can be introduced as you drive. On the Live Guide tab, the Live Narrative card fills the space from under the app title down to the tab bar: the area and narration appear over a full-width photo. Along the bottom of that card, icon-only controls run left to right—start guiding if needed, pause or resume playback, replay the narration, then pause guiding to stop continuous monitoring and location use for that session.\n\nThe Magazine tab gives you related links for the current area. Place links open in Maps, while people, events, and cultural references open in browser search.'**
+  String get introductionBodyMain;
+
+  /// No description provided for @introductionMoreAndroid.
+  ///
+  /// In en, this message translates to:
+  /// **'In More, you can choose the narration persona, check the current system language and voice.'**
+  String get introductionMoreAndroid;
+
+  /// No description provided for @introductionMoreIos.
+  ///
+  /// In en, this message translates to:
+  /// **'In More, you can choose the narration persona, check the current system language, and select a premium or enhanced TTS voice. On iOS, matching Settings > Apple Intelligence & Siri > Language with the app language can help local AI narration work more naturally.'**
+  String get introductionMoreIos;
 
   /// No description provided for @loadingVoices.
   ///
@@ -455,6 +467,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'After you hear a guided town intro for a place, it will appear here.'**
   String get routeHistoryEmpty;
+
+  /// No description provided for @routeHistoryToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get routeHistoryToday;
+
+  /// No description provided for @routeHistoryYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get routeHistoryYesterday;
+
+  /// No description provided for @routeHistoryDayBeforeYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Day before yesterday'**
+  String get routeHistoryDayBeforeYesterday;
+
+  /// No description provided for @routeHistoryEarlier.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier trips'**
+  String get routeHistoryEarlier;
+
+  /// No description provided for @routeHistoryNoEntriesThatDay.
+  ///
+  /// In en, this message translates to:
+  /// **'No places saved for this day.'**
+  String get routeHistoryNoEntriesThatDay;
 
   /// No description provided for @cityNarration.
   ///

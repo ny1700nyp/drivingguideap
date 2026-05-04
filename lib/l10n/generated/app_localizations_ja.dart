@@ -18,11 +18,19 @@ class AppLocalizationsJa extends AppLocalizations {
   String get introductionButton => 'Introduction';
 
   @override
-  String get introductionSummary => 'Twingl Roadの機能と、ドライブ中の使い方を確認できます。';
+  String get introductionSummary =>
+      'Live Guideの画面構成、自動ガイド開始、マガジンリンク、Moreの設定の要点です。';
 
   @override
-  String get introductionBody =>
-      'Twingl Roadは、ドライブ中に通過する都市や町の物語を音声中心で届ける旅行ガイドアプリです。地域の歴史、ランドマーク、風景、食、祭り、有名人などを、映画的なドキュメンタリーのように紹介します。\n\nStart Guidingは、新しい町に入るたびに自動でガイドを聞きたいときに使います。Check This Townは、継続的な位置監視をせずに、現在地のガイドを一度だけ聞きたいときに使います。\n\nマガジンタブでは、現在の地域に関連するリンクを確認できます。場所は地図アプリへ、人物やイベント、文化的なキーワードはブラウザ検索へつながります。\n\nMoreでは、ナレーションのペルソナ、現在のシステム言語、TTS音声を設定できます。iOSでは、設定 > Apple IntelligenceとSiri > 言語 をアプリの言語に合わせると、ローカルAIナレーションがより自然に動作しやすくなります。';
+  String get introductionBodyMain =>
+      'Twingl Roadは、ドライブ中に通過する都市や町の物語を音声中心で届ける旅行ガイドアプリです。地域の歴史、ランドマーク、風景、食、祭り、有名人などを、映画的なドキュメンタリーのように紹介します。\n\nアプリを開くとガイドが自動で始まり、新しい町に入るたびに案内を聞けます。Live Guideタブの「ライブナレーション」カードは、アプリのタイトル下から下部のタブバー直上まで縦いっぱいに表示され、横幅いっぱいの写真の上に地域名とナレーション文が重なります。カード下端にはラベルなしのアイコンのみのコントロールが左から並びます—必要ならガイド開始、再生の一時停止・再開、リプレイ、そして連続モニタリングを終えるガイドの一時停止（Pause Guide）です。\n\nマガジンタブでは、現在の地域に関連するリンクを確認できます。場所は地図アプリへ、人物やイベント、文化的なキーワードはブラウザ検索へつながります。';
+
+  @override
+  String get introductionMoreAndroid => 'Moreでは、ナレーションのペルソナ、現在のシステム言語と音声を選べます。';
+
+  @override
+  String get introductionMoreIos =>
+      'Moreでは、ナレーションのペルソナ、現在のシステム言語、TTS音声を設定できます。iOSでは、設定 > Apple IntelligenceとSiri > 言語 をアプリの言語に合わせると、ローカルAIナレーションがより自然に動作しやすくなります。';
 
   @override
   String get loadingVoices => '音声を読み込み中...';
@@ -197,6 +205,21 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get routeHistoryEmpty => 'ガイドを再生すると、その都市の記録がここに表示されます。';
+
+  @override
+  String get routeHistoryToday => '今日';
+
+  @override
+  String get routeHistoryYesterday => '昨日';
+
+  @override
+  String get routeHistoryDayBeforeYesterday => '一昨日';
+
+  @override
+  String get routeHistoryEarlier => 'それ以前';
+
+  @override
+  String get routeHistoryNoEntriesThatDay => 'この日付に保存された記録はありません。';
 
   @override
   String get cityNarration => '都市ナレーション';

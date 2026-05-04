@@ -26,9 +26,12 @@ class TtsAudioGuideService {
   TtsVoice? _selectedVoice;
   String _defaultLanguage = 'en-US';
   int _speakingOffset = 0;
+  bool _utteranceActive = false;
 
   TtsVoice? get selectedVoice => _selectedVoice;
   Stream<SpeakingRange?> get speakingRanges => _speakingRangeController.stream;
+  /// True from the first [speak]/[speakFrom] segment until completion, cancel, or [stop].
+  bool get isUtteranceActive => _utteranceActive;
 
   Future<void> configure() async {
     if (_configured) {
@@ -68,13 +71,20 @@ class TtsAudioGuideService {
         ),
       );
     });
+    void clearUtterance() {
+      _utteranceActive = false;
+    }
+
     _tts.setCompletionHandler(() {
+      clearUtterance();
       _speakingRangeController.add(null);
     });
     _tts.setCancelHandler(() {
+      clearUtterance();
       _speakingRangeController.add(null);
     });
     _tts.setErrorHandler((_) {
+      clearUtterance();
       _speakingRangeController.add(null);
     });
     _configured = true;
@@ -161,6 +171,7 @@ class TtsAudioGuideService {
   }
 
   Future<void> stop() async {
+    _utteranceActive = false;
     await _tts.stop();
     _speakingOffset = 0;
     _speakingRangeController.add(null);
@@ -178,6 +189,7 @@ class TtsAudioGuideService {
         await _tts.stop();
       }
       _speakingOffset = offset;
+      _utteranceActive = true;
       await _tts.speak(text);
     } finally {
       _speakingOffset = 0;

@@ -18,11 +18,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get introductionButton => 'Introduction';
 
   @override
-  String get introductionSummary => '了解 Twingl Road 的用途，以及如何在路上使用它。';
+  String get introductionSummary => 'Live Guide 布局、自动开始导览、杂志链接与 More 设置的关系说明。';
 
   @override
-  String get introductionBody =>
-      'Twingl Road 是一款以音频为中心的公路旅行导览应用。当你经过城市和小镇时，它会以电影纪录片般的方式介绍当地历史、地标、风景、食物、节庆和知名人物。\n\n当你希望应用在进入每个新城镇时自动介绍当地故事，可以使用 Start Guiding。若只想在当前位置听一次导览，而不进行持续位置监测，可以使用 Check This Town。\n\n杂志标签页会显示当前区域的相关链接。地点会打开地图应用，人物、活动和文化关键词会打开浏览器搜索。\n\n在 More 中，你可以选择旁白人设、查看当前系统语言，并选择高级或增强 TTS 语音。在 iOS 上，将 Settings > Apple Intelligence & Siri > Language 与应用语言保持一致，有助于本地 AI 旁白更自然地工作。';
+  String get introductionBodyMain =>
+      'Twingl Road 是一款以音频为中心的公路旅行导览应用。当你经过城市和小镇时，它会以电影纪录片般的方式介绍当地历史、地标、风景、食物、节庆和知名人物。\n\n打开应用后，导览会自动开始，让你在进入新城镇时听到介绍。在 Live Guide 标签页，「Live Narrative / 实时旁白」卡片从标题下方一直延伸到底部标签栏上方，整幅宽屏照片上方叠放地区名与朗读文案。卡片底部是一排仅含图标、无文字的按钮，从左到右依次为：需要时开始导览、暂停/继续播放、重播，以及结束持续监测的暂停导览（Pause Guide）。\n\n杂志标签页会显示当前区域的相关链接。地点会打开地图应用，人物、活动和文化关键词会打开浏览器搜索。';
+
+  @override
+  String get introductionMoreAndroid => '在 More 中，可以选择旁白人设、查看当前系统语言和语音。';
+
+  @override
+  String get introductionMoreIos =>
+      '在 More 中，你可以选择旁白人设、查看当前系统语言，并选择高级或增强 TTS 语音。在 iOS 上，将 Settings > Apple Intelligence & Siri > Language 与应用语言保持一致，有助于本地 AI 旁白更自然地工作。';
 
   @override
   String get loadingVoices => '正在加载语音...';
@@ -196,6 +203,21 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get routeHistoryEmpty => '听完城镇导览后，对应城市的记录会显示在这里。';
+
+  @override
+  String get routeHistoryToday => '今天';
+
+  @override
+  String get routeHistoryYesterday => '昨天';
+
+  @override
+  String get routeHistoryDayBeforeYesterday => '前天';
+
+  @override
+  String get routeHistoryEarlier => '更早的行程';
+
+  @override
+  String get routeHistoryNoEntriesThatDay => '这一天没有保存的地点。';
 
   @override
   String get cityNarration => '城市解说';

@@ -19,11 +19,19 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get introductionSummary =>
-      'Erfahre, was Twingl Road macht und wie du es unterwegs nutzt.';
+      'Live Guide-Ansicht, automatischer Start, Magazin-Links und More-Einstellungen im Überblick.';
 
   @override
-  String get introductionBody =>
-      'Twingl Road ist ein audiobasierter Reiseführer für die Straße. Während du durch Städte und Orte fährst, erzählt die App lokale Geschichte, Wahrzeichen, Landschaften, Essen, Festivals und bekannte Persönlichkeiten im Stil einer filmischen Dokumentation.\n\nNutze Start Guiding, wenn die App beim Einfahren in jeden neuen Ort automatisch eine Einführung geben soll. Nutze Check This Town, wenn du nur einmal eine Führung für deinen aktuellen Standort hören möchtest, ohne dauerhaftes Monitoring.\n\nDer Magazin-Tab zeigt passende Links zum aktuellen Gebiet. Orte werden in Karten geöffnet, Personen, Ereignisse und kulturelle Begriffe in der Browsersuche.\n\nUnter More kannst du die Erzähl-Persona, die aktuelle Systemsprache und eine Premium- oder erweiterte TTS-Stimme auswählen. Unter iOS kann es helfen, Settings > Apple Intelligence & Siri > Language an die App-Sprache anzupassen, damit lokale KI-Erzählungen natürlicher funktionieren.';
+  String get introductionBodyMain =>
+      'Twingl Road ist ein audiobasierter Reiseführer für die Straße. Während du durch Städte und Orte fährst, erzählt die App lokale Geschichte, Wahrzeichen, Landschaften, Essen, Festivals und bekannte Persönlichkeiten im Stil einer filmischen Dokumentation.\n\nBeim Öffnen der App startet die Führung automatisch, sodass neue Orte beim Einfahren vorgestellt werden können. Auf dem Tab „Live Guide“ füllt die Karte „Live Narrative“ den Bereich von unter der App-Leiste bis knapp über die untere Navigationsleiste: über ein Foto in voller Breite erscheinen Ortsname und Erzähltext. Unten an der Karte stehen nur Symbole in einer Reihe—bei Bedarf Führung starten, Wiedergabe pausieren oder fortsetzen, Erzählung erneut abspielen und die Führung pausieren, um das kontinuierliche Monitoring und die Standortnutzung für diese Sitzung zu beenden.\n\nDer Magazin-Tab zeigt passende Links zum aktuellen Gebiet. Orte werden in Karten geöffnet, Personen, Ereignisse und kulturelle Begriffe in der Browsersuche.';
+
+  @override
+  String get introductionMoreAndroid =>
+      'Unter More kannst du die Erzähl-Persona, die aktuelle Systemsprache und die Stimme auswählen.';
+
+  @override
+  String get introductionMoreIos =>
+      'Unter More kannst du die Erzähl-Persona, die aktuelle Systemsprache und eine Premium- oder erweiterte TTS-Stimme auswählen. Unter iOS kann es helfen, Settings > Apple Intelligence & Siri > Language an die App-Sprache anzupassen, damit lokale KI-Erzählungen natürlicher funktionieren.';
 
   @override
   String get loadingVoices => 'Stimmen werden geladen...';
@@ -206,6 +214,22 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get routeHistoryEmpty =>
       'Nach einer Stadtführung erscheint der Ort hier.';
+
+  @override
+  String get routeHistoryToday => 'Heute';
+
+  @override
+  String get routeHistoryYesterday => 'Gestern';
+
+  @override
+  String get routeHistoryDayBeforeYesterday => 'Vorgestern';
+
+  @override
+  String get routeHistoryEarlier => 'Frühere Fahrten';
+
+  @override
+  String get routeHistoryNoEntriesThatDay =>
+      'Für diesen Tag sind keine Orte gespeichert.';
 
   @override
   String get cityNarration => 'Stadterzählung';

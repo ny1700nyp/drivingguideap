@@ -19,11 +19,19 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get introductionSummary =>
-      'Twingl Road가 무엇을 하는 앱인지, 주행 중 어떻게 활용하는지 확인하세요.';
+      'Live Guide 화면 구성, 자동 가이드 시작, 매거진 링크, More 설정까지 한눈에 정리합니다.';
 
   @override
-  String get introductionBody =>
-      'Twingl Road는 운전 중 지나가는 도시와 타운의 이야기를 오디오 중심으로 들려주는 여행 가이드 앱입니다. 새로운 지역을 지나갈 때마다 역사, 랜드마크, 자연 풍경, 지역 음식, 축제, 유명 인물 같은 이야기를 시네마틱 다큐멘터리처럼 소개합니다.\n\nStart Guiding은 주행 중 새로운 타운에 들어갈 때마다 자동으로 가이드를 듣고 싶을 때 사용합니다. Check This Town은 지속적인 모니터링 없이 현재 위치의 이야기를 한 번만 듣고 싶을 때 사용합니다.\n\n매거진 탭에서는 현재 지역과 관련된 링크를 볼 수 있습니다. 장소는 지도 앱으로, 인물이나 이벤트, 문화적 키워드는 브라우저 검색으로 연결됩니다.\n\nMore에서는 내레이션 페르소나, 현재 시스템 언어, TTS 보이스를 설정할 수 있습니다. iOS에서는 Settings > Apple Intelligence & Siri > Language를 앱 언어와 맞추면 로컬 AI 내레이션이 더 자연스럽게 동작하는 데 도움이 됩니다.';
+  String get introductionBodyMain =>
+      'Twingl Road는 운전 중 지나가는 도시와 타운의 이야기를 오디오 중심으로 들려주는 여행 가이드 앱입니다. 새로운 지역을 지나갈 때마다 역사, 랜드마크, 자연 풍경, 지역 음식, 축제, 유명 인물 같은 이야기를 시네마틱 다큐멘터리처럼 소개합니다.\n\n앱을 열면 가이드가 자동으로 시작되어, 새로운 타운에 들어설 때 소개를 들을 수 있습니다. Live Guide 탭의 Live Narrative 카드는 앱 제목 아래부터 하단 탭 바로 위까지 세로로 꽉 차며, 가로 전체 사진 위에 지역 이름과 내레이션 텍스트가 보입니다. 카드 하단에는 텍스트 없이 아이콘만 있는 버튼이 왼쪽부터 차례로 배치됩니다—필요 시 가이드 시작, 재생 일시정지·재개, 다시 듣기, 그리고 연속 모니터링을 끝내는 가이드 일시정지(Pause Guide)입니다.\n\n매거진 탭에서는 현재 지역과 관련된 링크를 볼 수 있습니다. 장소는 지도 앱으로, 인물이나 이벤트, 문화적 키워드는 브라우저 검색으로 연결됩니다.';
+
+  @override
+  String get introductionMoreAndroid =>
+      'More에서는 내레이션 페르소나, 현재 시스템 언어와 보이스를 설정할 수 있습니다.';
+
+  @override
+  String get introductionMoreIos =>
+      'More에서는 내레이션 페르소나, 현재 시스템 언어, TTS 보이스를 설정할 수 있습니다. iOS에서는 Settings > Apple Intelligence & Siri > Language를 앱 언어와 맞추면 로컬 AI 내레이션이 더 자연스럽게 동작하는 데 도움이 됩니다.';
 
   @override
   String get loadingVoices => '보이스를 불러오는 중...';
@@ -198,6 +206,21 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get routeHistoryEmpty => '타운 가이드를 들으면 해당 도시 기록이 여기에 쌓입니다.';
+
+  @override
+  String get routeHistoryToday => '오늘';
+
+  @override
+  String get routeHistoryYesterday => '어제';
+
+  @override
+  String get routeHistoryDayBeforeYesterday => '그저께';
+
+  @override
+  String get routeHistoryEarlier => '이전 기록';
+
+  @override
+  String get routeHistoryNoEntriesThatDay => '이 날짜에 저장된 경로가 없습니다.';
 
   @override
   String get cityNarration => '도시 내레이션';

@@ -19,11 +19,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get introductionSummary =>
-      'Learn what Twingl Road does and how to use it on the road.';
+      'Live Guide layout, automatic guiding, Magazine links, and More settings—how they work together.';
 
   @override
-  String get introductionBody =>
-      'Twingl Road is an audio-first travel guide for the road. As you pass through cities and towns, it introduces local history, landmarks, scenery, food, festivals, and notable people in a cinematic documentary style.\n\nUse Start Guiding when you want the app to automatically introduce each new town as you enter it. Use Check This Town when you want a one-time guide for your current location without continuous monitoring.\n\nThe Magazine tab gives you related links for the current area. Place links open in Maps, while people, events, and cultural references open in browser search.\n\nIn More, you can choose the narration persona, check the current system language, and select a premium or enhanced TTS voice. On iOS, matching Settings > Apple Intelligence & Siri > Language with the app language can help local AI narration work more naturally.';
+  String get introductionBodyMain =>
+      'Twingl Road is an audio-first travel guide for the road. As you pass through cities and towns, it introduces local history, landmarks, scenery, food, festivals, and notable people in a cinematic documentary style.\n\nWhen you open the app, guiding starts automatically so new towns can be introduced as you drive. On the Live Guide tab, the Live Narrative card fills the space from under the app title down to the tab bar: the area and narration appear over a full-width photo. Along the bottom of that card, icon-only controls run left to right—start guiding if needed, pause or resume playback, replay the narration, then pause guiding to stop continuous monitoring and location use for that session.\n\nThe Magazine tab gives you related links for the current area. Place links open in Maps, while people, events, and cultural references open in browser search.';
+
+  @override
+  String get introductionMoreAndroid =>
+      'In More, you can choose the narration persona, check the current system language and voice.';
+
+  @override
+  String get introductionMoreIos =>
+      'In More, you can choose the narration persona, check the current system language, and select a premium or enhanced TTS voice. On iOS, matching Settings > Apple Intelligence & Siri > Language with the app language can help local AI narration work more naturally.';
 
   @override
   String get loadingVoices => 'Loading voices...';
@@ -204,6 +212,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get routeHistoryEmpty =>
       'After you hear a guided town intro for a place, it will appear here.';
+
+  @override
+  String get routeHistoryToday => 'Today';
+
+  @override
+  String get routeHistoryYesterday => 'Yesterday';
+
+  @override
+  String get routeHistoryDayBeforeYesterday => 'Day before yesterday';
+
+  @override
+  String get routeHistoryEarlier => 'Earlier trips';
+
+  @override
+  String get routeHistoryNoEntriesThatDay => 'No places saved for this day.';
 
   @override
   String get cityNarration => 'City narration';

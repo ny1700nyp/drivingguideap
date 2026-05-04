@@ -1,9 +1,9 @@
 # Privacy Policy — Twingl Road
 
-> **Important:** This document is a **draft** aligned with the app’s current behavior (location, on-device storage, optional third‑party weather requests on fallback paths, links opening external apps). **Have it reviewed by qualified legal counsel** before relying on it for publication. Replace **`[Legal entity name]`** with your registered business or developer name where required.
+> **Important:** This document is a **draft** aligned with the app’s current behavior (location, on-device storage, optional third‑party weather requests on fallback paths, links opening external apps). **Have it reviewed by qualified legal counsel** before relying on it for publication. Replace **Twingl Studio** with your registered business or developer name where required.
 
 **Effective date:** May 3, 2026  
-**Operator:** `[Legal entity name]` (“we”, “us”)  
+**Operator:** Twingl Studio (“we”, “us”)  
 **Privacy contact:** [mytwingl@twinglapp.com](mailto:mytwingl@twinglapp.com)
 
 A Korean-language draft also exists in this repository: [docs/privacy_policy_ko.md](docs/privacy_policy_ko.md).

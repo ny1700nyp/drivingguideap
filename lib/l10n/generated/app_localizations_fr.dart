@@ -19,11 +19,19 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get introductionSummary =>
-      'Découvrez ce que fait Twingl Road et comment l\'utiliser sur la route.';
+      'Présentation du Live Guide, du démarrage automatique, de Magazine et des réglages More.';
 
   @override
-  String get introductionBody =>
-      'Twingl Road est un guide de voyage pensé d\'abord pour l\'audio. Lorsque vous traversez des villes et villages, il présente l\'histoire locale, les monuments, les paysages, la cuisine, les festivals et les personnalités marquantes dans un style de documentaire cinématographique.\n\nUtilisez Start Guiding si vous voulez que l\'app présente automatiquement chaque nouvelle ville lorsque vous y entrez. Utilisez Check This Town si vous voulez écouter une seule fois le guide de votre position actuelle, sans surveillance continue.\n\nL\'onglet Magazine propose des liens liés à la zone actuelle. Les lieux s\'ouvrent dans Plans, tandis que les personnes, événements et références culturelles s\'ouvrent dans une recherche navigateur.\n\nDans More, vous pouvez choisir la persona de narration, vérifier la langue système actuelle et sélectionner une voix TTS premium ou améliorée. Sur iOS, faire correspondre Settings > Apple Intelligence & Siri > Language avec la langue de l\'app peut aider la narration IA locale à fonctionner plus naturellement.';
+  String get introductionBodyMain =>
+      'Twingl Road est un guide de voyage pensé d\'abord pour l\'audio. Lorsque vous traversez des villes et villages, il présente l\'histoire locale, les monuments, les paysages, la cuisine, les festivals et les personnalités marquantes dans un style de documentaire cinématographique.\n\nÀ l\'ouverture de l\'app, le guidage démarre automatiquement afin de présenter chaque nouvelle ville lorsque vous arrivez. Dans l\'onglet Live Guide, la carte « Narration en direct » occupe l\'espace sous le titre jusqu\'au-dessus de la barre d\'onglets : le nom du lieu et le texte narration se superposent à une photo pleine largeur. En bas de la carte, des commandes uniquement icônes vont de gauche à droite — démarrer le guidage si besoin, mettre en pause ou reprendre la lecture, rejouer la narration, puis mettre en pause le guidage pour arrêter la surveillance continue et l\'utilisation de la position pour la session.\n\nL\'onglet Magazine propose des liens liés à la zone actuelle. Les lieux s\'ouvrent dans Plans, tandis que les personnes, événements et références culturelles s\'ouvrent dans une recherche navigateur.';
+
+  @override
+  String get introductionMoreAndroid =>
+      'Dans More, vous pouvez choisir la persona de narration, vérifier la langue système et la voix.';
+
+  @override
+  String get introductionMoreIos =>
+      'Dans More, vous pouvez choisir la persona de narration, vérifier la langue système actuelle et sélectionner une voix TTS premium ou améliorée. Sur iOS, faire correspondre Settings > Apple Intelligence & Siri > Language avec la langue de l\'app peut aider la narration IA locale à fonctionner plus naturellement.';
 
   @override
   String get loadingVoices => 'Chargement des voix...';
@@ -205,6 +213,22 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get routeHistoryEmpty =>
       'Après une présentation guidée d’une ville, elle apparaît ici.';
+
+  @override
+  String get routeHistoryToday => 'Aujourd’hui';
+
+  @override
+  String get routeHistoryYesterday => 'Hier';
+
+  @override
+  String get routeHistoryDayBeforeYesterday => 'Avant-hier';
+
+  @override
+  String get routeHistoryEarlier => 'Trajets précédents';
+
+  @override
+  String get routeHistoryNoEntriesThatDay =>
+      'Aucun lieu enregistré pour ce jour.';
 
   @override
   String get cityNarration => 'Récit de la ville';

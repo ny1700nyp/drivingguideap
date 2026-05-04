@@ -152,6 +152,9 @@ class _GuideHistoryEntry {
   }
 }
 
+DateTime _calendarDateOnly(DateTime dt) =>
+    DateTime(dt.year, dt.month, dt.day);
+
 class _AddCustomPersonaEditorPage extends StatefulWidget {
   const _AddCustomPersonaEditorPage({required this.l10n});
 
@@ -480,6 +483,8 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   List<_CustomPersona> _customPersonas = const [];
   List<_GuideHistoryEntry> _guideHistory = const [];
   String? _magazineHistorySelectionKey;
+  /// Calendar day (local, date-only) for "Earlier" route history; null until user picks.
+  DateTime? _routeHistoryOlderCalendarDay;
   String? _loadedVoiceLocalePrefix;
   List<GuideLink> _guideLinks = const [];
   bool _isMonitoring = false;
@@ -530,6 +535,16 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
     });
     unawaited(_loadSavedSettings());
     unawaited(_refreshCompactPlaceLabelsFlag());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_autoStartGuidingOnAppLaunch());
+    });
+  }
+
+  /// Cold start: begin guiding without the confirmation dialog (OS may still
+  /// prompt for location and other permissions).
+  Future<void> _autoStartGuidingOnAppLaunch() async {
+    if (!mounted || _isMonitoring) return;
+    await _startMonitoring();
   }
 
   Future<void> _refreshCompactPlaceLabelsFlag() async {
@@ -736,6 +751,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
     setState(() {
       _guideHistory = const [];
       _magazineHistorySelectionKey = null;
+      _routeHistoryOlderCalendarDay = null;
     });
   }
 
@@ -1003,33 +1019,6 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
     });
   }
 
-  Future<void> _checkThisTown() async {
-    _playbackRunId++;
-    await _ttsService.stop();
-    try {
-      await _ttsService.configure();
-      setState(() {
-        _preparedTtsText = '';
-        _currentSpeakingRange = null;
-        _guideLinks = const [];
-        _isAiThinking = true;
-        _isPlaybackPaused = false;
-        _isPlaybackCompleted = false;
-        _resumeSpeakingIndex = 0;
-      });
-      final region = await _locationService.currentRegionSnapshot();
-      await _handleRegionChange(region);
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _isAiThinking = false;
-      });
-      debugPrint('Could not check this town: $error');
-    }
-  }
-
   Future<void> _handleRegionChange(RegionSnapshot region) async {
     if (_compactPlaceLabelsForDevice == null) {
       try {
@@ -1170,6 +1159,20 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
       return;
     }
 
+    if (_ttsService.isUtteranceActive) {
+      final currentRange = _currentSpeakingRange;
+      if (currentRange != null) {
+        _resumeSpeakingIndex = currentRange.start;
+      }
+      _playbackRunId++;
+      await _ttsService.stop();
+      setState(() {
+        _isPlaybackPaused = true;
+        _isPlaybackCompleted = false;
+      });
+      return;
+    }
+
     if (_isPlaybackCompleted) {
       await _replayNarrative();
       return;
@@ -1236,83 +1239,6 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
         url: url,
         kind: map ? GuideLinkKind.map : GuideLinkKind.search,
       ),
-    );
-  }
-
-  Future<void> _showExpandedNarrative(BuildContext context) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) {
-        final colorScheme = Theme.of(context).colorScheme;
-        final l10n = _l10n;
-        return FractionallySizedBox(
-          heightFactor: 0.82,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: colorScheme.surface,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          l10n.fullNarrative,
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.close),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  _buildOnDeviceNarrationNotice(context),
-                  Expanded(
-                    child: StreamBuilder<SpeakingRange?>(
-                      stream: _ttsService.speakingRanges,
-                      initialData: _currentSpeakingRange,
-                      builder: (context, snapshot) {
-                        return SingleChildScrollView(
-                          child: _SynchronizedNarrativeText(
-                            text: _preparedTtsText,
-                            speakingRange: snapshot.data,
-                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: colorScheme.onSurface,
-                              height: 1.55,
-                              fontSize: 18,
-                            ),
-                            fallbackColor: colorScheme.onSurface,
-                            expanded: true,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      '${l10n.characterCount(_preparedTtsText.characters.length)} · ${l10n.wordCount(_wordCount(_preparedTtsText))}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurface.withValues(alpha: 0.68),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -1493,12 +1419,15 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
     return _guideLinks;
   }
 
-  int _wordCount(String text) {
-    return RegExp(r'\S+').allMatches(text.trim()).length;
-  }
-
   bool _hasCurrentArea() {
     return _currentRegion != null;
+  }
+
+  String _introductionExpandedBody(AppLocalizations l10n) {
+    final more = !kIsWeb && Platform.isIOS
+        ? l10n.introductionMoreIos
+        : l10n.introductionMoreAndroid;
+    return '${l10n.introductionBodyMain}\n\n$more';
   }
 
   Widget _buildLiveGuideTab(BuildContext context) {
@@ -1509,53 +1438,183 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
     final backgroundUrl =
         'https://source.unsplash.com/1200x900/?${Uri.encodeComponent('$areaQuery city landscape road')}';
 
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        _HeroGuideCard(
-          narrationNotice: _buildOnDeviceNarrationNotice(
-            context,
-            onDarkBackdrop: true,
-          ),
-          areaName: areaTitle,
-          imageUrl: backgroundUrl,
-          narrative: hasNarrative
-              ? _preparedTtsText
-              : l10n.startGuiding,
-          speakingRange: _currentSpeakingRange,
-          isThinking: _isAiThinking,
-          isSpeaking:
-              _currentSpeakingRange != null,
-          isMonitoring: _isMonitoring,
-          isPaused: _isPlaybackPaused,
-          isCompleted: _isPlaybackCompleted,
-          onTogglePlayback: hasNarrative ? _togglePlayback : null,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+          child: SizedBox(
+            height: constraints.maxHeight,
+            width: constraints.maxWidth,
+            child: _HeroGuideCard(
+              narrationNotice: _buildOnDeviceNarrationNotice(
+                context,
+                onDarkBackdrop: true,
+              ),
+              areaName: areaTitle,
+              imageUrl: backgroundUrl,
+              narrative: hasNarrative
+                  ? _preparedTtsText
+                  : l10n.startGuiding,
+              speakingRange: _currentSpeakingRange,
+              isThinking: _isAiThinking,
+              isSpeaking:
+                  _currentSpeakingRange != null,
+              isMonitoring: _isMonitoring,
+              isPaused: _isPlaybackPaused,
+              isCompleted: _isPlaybackCompleted,
+              isTtsUtteranceActive: _ttsService.isUtteranceActive,
+              onStartGuiding:
+                  _isMonitoring ? null : () => _confirmStartGuiding(context),
+              onTogglePlayback: hasNarrative ? _togglePlayback : null,
           onReplay: hasNarrative ? _replayNarrative : null,
-          onExpand: hasNarrative
-              ? () => _showExpandedNarrative(context)
-              : null,
+          onPauseGuide: _isMonitoring ? _stopMonitoring : null,
         ),
-        const SizedBox(height: 16),
-        FilledButton.icon(
-          onPressed: _isMonitoring
-              ? null
-              : () => _confirmStartGuiding(context),
-          icon: const Icon(Icons.navigation),
-          label: Text(l10n.startGuiding),
-        ),
-        const SizedBox(height: 8),
-        OutlinedButton.icon(
-          onPressed: _isMonitoring ? _stopMonitoring : null,
-          icon: const Icon(Icons.stop),
-          label: Text(l10n.pauseGuide),
-        ),
-        const SizedBox(height: 8),
-        FilledButton.tonalIcon(
-          onPressed: _isAiThinking ? null : _checkThisTown,
-          icon: const Icon(Icons.my_location),
-          label: Text(l10n.checkThisTown),
+          ),
+        );
+      },
+    );
+  }
+
+  ({
+    List<_GuideHistoryEntry> today,
+    List<_GuideHistoryEntry> yesterday,
+    List<_GuideHistoryEntry> dayBeforeYesterday,
+    Map<DateTime, List<_GuideHistoryEntry>> olderByDay,
+  }) _partitionGuideHistory() {
+    final now = DateTime.now();
+    final todayD = _calendarDateOnly(now);
+    final yD = todayD.subtract(const Duration(days: 1));
+    final byeD = todayD.subtract(const Duration(days: 2));
+
+    final today = <_GuideHistoryEntry>[];
+    final yesterday = <_GuideHistoryEntry>[];
+    final dayBefore = <_GuideHistoryEntry>[];
+    final older = <DateTime, List<_GuideHistoryEntry>>{};
+
+    for (final e in _guideHistory) {
+      final d = _calendarDateOnly(e.recordedAt);
+      if (d == todayD) {
+        today.add(e);
+      } else if (d == yD) {
+        yesterday.add(e);
+      } else if (d == byeD) {
+        dayBefore.add(e);
+      } else {
+        older.putIfAbsent(d, () => []).add(e);
+      }
+    }
+    return (
+      today: today,
+      yesterday: yesterday,
+      dayBeforeYesterday: dayBefore,
+      olderByDay: older,
+    );
+  }
+
+  DateTime _clampCalendarDay(DateTime d, DateTime first, DateTime last) {
+    if (d.isBefore(first)) return first;
+    if (d.isAfter(last)) return last;
+    return d;
+  }
+
+  Widget _buildGuideHistoryExpansionTile(
+    BuildContext context,
+    AppLocalizations l10n,
+    _GuideHistoryEntry entry,
+  ) {
+    final sel = _magazineHistorySelectionKey == entry.selectionKey;
+    final tint = Theme.of(context)
+        .colorScheme
+        .primaryContainer
+        .withValues(alpha: 0.28);
+    return ExpansionTile(
+      key: ValueKey(entry.selectionKey),
+      tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+      backgroundColor: sel ? tint : null,
+      collapsedBackgroundColor: sel ? tint : null,
+      onExpansionChanged: (expanded) {
+        setState(() {
+          if (expanded) {
+            _magazineHistorySelectionKey = entry.selectionKey;
+          } else if (_magazineHistorySelectionKey == entry.selectionKey) {
+            _magazineHistorySelectionKey = null;
+          }
+        });
+      },
+      title: Text(
+        entry.cityName,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Text(
+        DateFormat.yMMMd().add_jm().format(entry.recordedAt),
+      ),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.cityNarration,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 6),
+              SelectableText(
+                entry.firstLlmResult,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+          ),
         ),
       ],
+    );
+  }
+
+  List<Widget> _routeHistoryDividedTiles(
+    BuildContext context,
+    AppLocalizations l10n,
+    List<_GuideHistoryEntry> entries,
+  ) {
+    final out = <Widget>[];
+    for (var i = 0; i < entries.length; i++) {
+      if (i > 0) {
+        out.add(const Divider(height: 1));
+      }
+      out.add(_buildGuideHistoryExpansionTile(context, l10n, entries[i]));
+    }
+    return out;
+  }
+
+  Widget _buildRouteHistoryDateGroupCard({
+    required BuildContext context,
+    required AppLocalizations l10n,
+    required String groupTitle,
+    required List<_GuideHistoryEntry> entries,
+  }) {
+    if (entries.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: ExpansionTile(
+          initiallyExpanded: true,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+          title: Text(
+            groupTitle,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context)
+                .textTheme
+                .titleSmall
+                ?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          children: _routeHistoryDividedTiles(context, l10n, entries),
+        ),
+      ),
     );
   }
 
@@ -1661,77 +1720,120 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
             ),
           )
         else
-          Card(
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              children: [
-                for (var i = 0; i < _guideHistory.length; i++) ...[
-                  if (i > 0) const Divider(height: 1),
-                  Builder(
-                    builder: (context) {
-                      final entry = _guideHistory[i];
-                      final sel =
-                          _magazineHistorySelectionKey == entry.selectionKey;
-                      final tint = Theme.of(context)
-                          .colorScheme
-                          .primaryContainer
-                          .withValues(alpha: 0.28);
-                      return ExpansionTile(
-                        key: ValueKey(
-                          '${entry.recordedAt.toIso8601String()}_$i',
-                        ),
-                        tilePadding:
-                            const EdgeInsets.symmetric(horizontal: 12),
-                        backgroundColor: sel ? tint : null,
-                        collapsedBackgroundColor: sel ? tint : null,
-                        onExpansionChanged: (expanded) {
-                          setState(() {
-                            if (expanded) {
-                              _magazineHistorySelectionKey =
-                                  entry.selectionKey;
-                            } else if (_magazineHistorySelectionKey ==
-                                entry.selectionKey) {
-                              _magazineHistorySelectionKey = null;
-                            }
-                          });
-                        },
-                        title: Text(
-                          entry.cityName,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(
-                          DateFormat.yMMMd().add_jm().format(entry.recordedAt),
-                        ),
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  l10n.cityNarration,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleSmall
-                                      ?.copyWith(fontWeight: FontWeight.w700),
-                                ),
-                                const SizedBox(height: 6),
-                                SelectableText(
-                                  entry.firstLlmResult,
-                                  style:
-                                      Theme.of(context).textTheme.bodyMedium,
-                                ),
-                              ],
-                            ),
+          Builder(
+            builder: (context) {
+              final partition = _partitionGuideHistory();
+              final todayD = _calendarDateOnly(DateTime.now());
+              final yD = todayD.subtract(const Duration(days: 1));
+              final byeD = todayD.subtract(const Duration(days: 2));
+              final lastCal = todayD.subtract(const Duration(days: 3));
+              final older = partition.olderByDay;
+              final olderDays = older.keys.toList()..sort();
+              final firstCal = olderDays.isNotEmpty ? olderDays.first : lastCal;
+              final pickerLast =
+                  lastCal.isBefore(firstCal) ? firstCal : lastCal;
+              final picked = _routeHistoryOlderCalendarDay;
+              final selectedCal = olderDays.isEmpty
+                  ? pickerLast
+                  : picked != null
+                      ? _clampCalendarDay(picked, firstCal, pickerLast)
+                      : _clampCalendarDay(olderDays.last, firstCal, pickerLast);
+              final selectedKey = _calendarDateOnly(selectedCal);
+              final olderDayEntries = older[selectedKey] ?? [];
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (partition.today.isNotEmpty) ...[
+                    Text(
+                      l10n.routeHistoryToday,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
                           ),
-                        ],
-                      );
-                    },
+                    ),
+                    const SizedBox(height: 8),
+                    Card(
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        children: _routeHistoryDividedTiles(
+                          context,
+                          l10n,
+                          partition.today,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  _buildRouteHistoryDateGroupCard(
+                    context: context,
+                    l10n: l10n,
+                    groupTitle:
+                        '${l10n.routeHistoryYesterday} · ${DateFormat.yMMMd().format(yD)}',
+                    entries: partition.yesterday,
                   ),
+                  _buildRouteHistoryDateGroupCard(
+                    context: context,
+                    l10n: l10n,
+                    groupTitle:
+                        '${l10n.routeHistoryDayBeforeYesterday} · ${DateFormat.yMMMd().format(byeD)}',
+                    entries: partition.dayBeforeYesterday,
+                  ),
+                  if (olderDays.isNotEmpty) ...[
+                    Text(
+                      l10n.routeHistoryEarlier,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Card(
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          CalendarDatePicker(
+                            key: ValueKey<String>(
+                              selectedCal.toIso8601String(),
+                            ),
+                            firstDate: firstCal,
+                            lastDate: pickerLast,
+                            initialDate: selectedCal,
+                            onDateChanged: (d) {
+                              setState(() {
+                                _routeHistoryOlderCalendarDay =
+                                    _calendarDateOnly(d);
+                              });
+                            },
+                          ),
+                          const Divider(height: 1),
+                          if (olderDayEntries.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Text(
+                                l10n.routeHistoryNoEntriesThatDay,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                      color: Theme.of(context).hintColor,
+                                    ),
+                              ),
+                            )
+                          else
+                            Column(
+                              children: _routeHistoryDividedTiles(
+                                context,
+                                l10n,
+                                olderDayEntries,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
-              ],
-            ),
+              );
+            },
           ),
       ],
     );
@@ -1745,7 +1847,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
         _IntroductionCard(
           title: l10n.introductionTitle,
           summary: l10n.introductionSummary,
-          body: l10n.introductionBody,
+          body: _introductionExpandedBody(l10n),
           expanded: _isIntroductionExpanded,
           onTap: () {
             setState(() {
@@ -2135,6 +2237,9 @@ class _IntroductionCard extends StatelessWidget {
     required this.onTap,
   });
 
+  static const _backgroundImageUrl =
+      'https://source.unsplash.com/1200x900/?scenic road drive horizon';
+
   final String title;
   final String summary;
   final String body;
@@ -2143,84 +2248,97 @@ class _IntroductionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFF6D5DF6),
-            Color(0xFF55D6BE),
-            Color(0xFFFF9F43),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF6D5DF6).withValues(alpha: 0.20),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
+    final colorScheme = Theme.of(context).colorScheme;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(32),
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
+          Positioned.fill(
+            child: Image.network(
+              _backgroundImageUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      colorScheme.primary,
+                      colorScheme.secondary,
+                      colorScheme.tertiary,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+              ),
+            ),
           ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(24),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                          ),
+                        ),
+                        Icon(
+                          expanded
+                              ? Icons.keyboard_arrow_up_rounded
+                              : Icons.keyboard_arrow_down_rounded,
                           color: Colors.white,
-                          fontWeight: FontWeight.w900,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      summary,
+                      style:
+                          Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Colors.white.withValues(alpha: 0.92),
+                                fontWeight: FontWeight.w600,
+                              ),
+                    ),
+                    AnimatedCrossFade(
+                      firstChild: const SizedBox.shrink(),
+                      secondChild: Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(
+                          body,
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Colors.white,
+                                    height: 1.45,
+                                  ),
                         ),
                       ),
-                    ),
-                    Icon(
-                      expanded
-                          ? Icons.keyboard_arrow_up_rounded
-                          : Icons.keyboard_arrow_down_rounded,
-                      color: Colors.white,
+                      crossFadeState: expanded
+                          ? CrossFadeState.showSecond
+                          : CrossFadeState.showFirst,
+                      duration: const Duration(milliseconds: 220),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  summary,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.92),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                AnimatedCrossFade(
-                  firstChild: const SizedBox.shrink(),
-                  secondChild: Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Text(
-                      body,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.white,
-                        height: 1.45,
-                      ),
-                    ),
-                  ),
-                  crossFadeState: expanded
-                      ? CrossFadeState.showSecond
-                      : CrossFadeState.showFirst,
-                  duration: const Duration(milliseconds: 220),
-                ),
-              ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -2238,9 +2356,11 @@ class _HeroGuideCard extends StatelessWidget {
     required this.isMonitoring,
     required this.isPaused,
     required this.isCompleted,
+    required this.isTtsUtteranceActive,
+    required this.onStartGuiding,
     required this.onTogglePlayback,
     required this.onReplay,
-    required this.onExpand,
+    required this.onPauseGuide,
   });
 
   final Widget narrationNotice;
@@ -2253,9 +2373,11 @@ class _HeroGuideCard extends StatelessWidget {
   final bool isMonitoring;
   final bool isPaused;
   final bool isCompleted;
+  final bool isTtsUtteranceActive;
+  final VoidCallback? onStartGuiding;
   final VoidCallback? onTogglePlayback;
   final VoidCallback? onReplay;
-  final VoidCallback? onExpand;
+  final VoidCallback? onPauseGuide;
 
   @override
   Widget build(BuildContext context) {
@@ -2288,128 +2410,110 @@ class _HeroGuideCard extends StatelessWidget {
             ),
           ),
           Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.black.withValues(alpha: 0.68),
-                    Colors.black.withValues(alpha: 0.34),
-                  ],
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  areaName,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                      ),
-                ),
-                narrationNotice,
-                const SizedBox(height: 12),
-                if (isCompleted) ...[
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    l10n.cruisingTowardsNextDiscovery,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    areaName,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
                   ),
-                  const SizedBox(height: 8),
-                ],
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        l10n.liveNarrative,
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  narrationNotice,
+                  const SizedBox(height: 12),
+                  if (isCompleted) ...[
+                    Text(
+                      l10n.cruisingTowardsNextDiscovery,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  Text(
+                    l10n.liveNarrative,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
                           color: Colors.white70,
                           letterSpacing: 1.2,
                         ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: onExpand,
-                      color: Colors.white,
-                      tooltip: l10n.expandNarrative,
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                if (isThinking)
-                  const _ThinkingNarrativeText()
-                else
-                  _NarrativeWindow(
-                    text: narrative,
-                    speakingRange: speakingRange,
-                    textStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.white,
-                      height: 1.35,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    fallbackColor: Colors.white,
                   ),
-                const SizedBox(height: 18),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: SizedBox(
-                        height: 44,
-                        child: isCompleted
-                            ? OutlinedButton.icon(
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: isThinking
+                        ? const Align(
+                            alignment: Alignment.topLeft,
+                            child: _ThinkingNarrativeText(),
+                          )
+                        : _NarrativeWindow(
+                            text: narrative,
+                            speakingRange: speakingRange,
+                            textStyle:
+                                Theme.of(context).textTheme.titleLarge?.copyWith(
+                                      color: Colors.white,
+                                      height: 1.35,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                            fallbackColor: Colors.white,
+                          ),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: IconButton(
+                          tooltip: l10n.startGuiding,
+                          onPressed: onStartGuiding,
+                          icon: const Icon(Icons.navigation),
+                          color: Colors.white,
+                        ),
+                      ),
+                      Expanded(
+                        child: IconButton(
+                          tooltip: isPaused ? l10n.resume : l10n.pause,
+                          onPressed: (isCompleted &&
+                                  !isPaused &&
+                                  !isTtsUtteranceActive)
+                              ? null
+                              : onTogglePlayback,
+                          icon: Icon(
+                            isPaused ? Icons.play_arrow : Icons.pause,
+                          ),
+                          color: Colors.white,
+                        ),
+                      ),
+                      Expanded(
+                        child: onReplay == null
+                            ? IconButton(
+                                tooltip: l10n.replay,
                                 onPressed: null,
-                                icon: const Icon(Icons.pause),
-                                label: Text(l10n.pause),
-                                style: OutlinedButton.styleFrom(
-                                  disabledForegroundColor: Colors.white54,
-                                  side: const BorderSide(color: Colors.white38),
-                                ),
+                                icon: const Icon(Icons.replay),
+                                color: Colors.white54,
                               )
-                            : FilledButton.icon(
-                                onPressed: onTogglePlayback,
-                                icon: Icon(
-                                  isPaused ? Icons.play_arrow : Icons.pause,
-                                ),
-                                label: Text(isPaused ? l10n.resume : l10n.pause),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: SizedBox(
-                        height: 44,
-                        child: isCompleted
-                            ? FilledButton.icon(
+                            : IconButton(
+                                tooltip: l10n.replay,
                                 onPressed: onReplay,
                                 icon: const Icon(Icons.replay),
-                                label: Text(l10n.replay),
-                              )
-                            : OutlinedButton.icon(
-                                onPressed: onReplay,
-                                icon: const Icon(Icons.replay),
-                                label: Text(l10n.replay),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.white,
-                                  side: const BorderSide(color: Colors.white70),
-                                ),
+                                color: Colors.white,
                               ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      Expanded(
+                        child: IconButton(
+                          tooltip: l10n.pauseGuide,
+                          onPressed: onPauseGuide,
+                          icon: const Icon(Icons.stop),
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -2658,39 +2762,42 @@ class _NarrativeWindowState extends State<_NarrativeWindow> {
   @override
   Widget build(BuildContext context) {
     final style = widget.textStyle ?? DefaultTextStyle.of(context).style;
-    final height = (style.fontSize ?? 20) * (style.height ?? 1.35) * 3.2;
-    return SizedBox(
-      height: height,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final range = widget.speakingRange;
-          if (range != null &&
-              range.start >= 0 &&
-              range.start < widget.text.length) {
-            _centerCurrentLine(
-              range: range,
-              style: style,
-              maxWidth: constraints.maxWidth,
-              viewportHeight: height,
-            );
-          }
+    final fallbackHeight =
+        (style.fontSize ?? 20) * (style.height ?? 1.35) * 3.2;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final viewportHeight =
+            constraints.maxHeight.isFinite && constraints.maxHeight > 0
+                ? constraints.maxHeight
+                : fallbackHeight;
 
-          return Stack(
-            children: [
-              SingleChildScrollView(
-                controller: _scrollController,
-                physics: const NeverScrollableScrollPhysics(),
-                child: _SynchronizedNarrativeText(
-                  text: widget.text,
-                  speakingRange: widget.speakingRange,
-                  style: style,
-                  fallbackColor: widget.fallbackColor,
-                ),
-              ),
-            ],
+        final range = widget.speakingRange;
+        if (range != null &&
+            range.start >= 0 &&
+            range.start < widget.text.length) {
+          _centerCurrentLine(
+            range: range,
+            style: style,
+            maxWidth: constraints.maxWidth,
+            viewportHeight: viewportHeight,
           );
-        },
-      ),
+        }
+
+        return Stack(
+          children: [
+            SingleChildScrollView(
+              controller: _scrollController,
+              physics: const ClampingScrollPhysics(),
+              child: _SynchronizedNarrativeText(
+                text: widget.text,
+                speakingRange: widget.speakingRange,
+                style: style,
+                fallbackColor: widget.fallbackColor,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -2701,14 +2808,12 @@ class _SynchronizedNarrativeText extends StatelessWidget {
     required this.speakingRange,
     this.style,
     this.fallbackColor,
-    this.expanded = false,
   });
 
   final String text;
   final SpeakingRange? speakingRange;
   final TextStyle? style;
   final Color? fallbackColor;
-  final bool expanded;
 
   @override
   Widget build(BuildContext context) {
