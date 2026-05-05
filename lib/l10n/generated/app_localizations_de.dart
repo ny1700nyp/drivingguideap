@@ -325,11 +325,8 @@ class AppLocalizationsDe extends AppLocalizations {
       'On-device-KI ist nicht aktiv. Bitte die Systemeinstellungen prüfen. Prüfen Sie außerdem, ob dieses Gerät On-device-KI unterstützt.';
 
   @override
-  String get idleActivityTimeoutTitle => 'Twingl Road pausiert';
-
-  @override
-  String get idleActivityTimeoutBody =>
-      'Ihr Standort blieb etwa 30 Minuten lang innerhalb von einer Meile ohne nennenswerte Bewegung. Die Führung wurde daher automatisch pausiert. Starten Sie sie wieder, wenn Sie weiterfahren möchten.';
+  String get idlePauseNotificationBody =>
+      'Pause. Weck mich für die nächste Geschichte.';
 
   @override
   String get supportSectionTitle => 'Support';

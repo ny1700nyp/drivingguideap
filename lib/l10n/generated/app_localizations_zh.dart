@@ -307,11 +307,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get onDeviceNarrationNotice => '设备端 AI 未启用。请检查系统设置，并确认本设备是否支持设备端 AI。';
 
   @override
-  String get idleActivityTimeoutTitle => 'Twingl Road 已暂停';
-
-  @override
-  String get idleActivityTimeoutBody =>
-      '约 30 分钟内您的位置在一英里范围内几乎没有移动，因此已自动暂停导览。准备继续行车时请重新开启导览。';
+  String get idlePauseNotificationBody => '正在休息。下一个故事时叫醒我吧。';
 
   @override
   String get supportSectionTitle => '支持';

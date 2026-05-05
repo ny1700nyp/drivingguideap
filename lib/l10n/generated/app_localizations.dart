@@ -666,17 +666,11 @@ abstract class AppLocalizations {
   /// **'On-device AI is not active. Please check system settings. Also confirm whether this device supports on-device AI.'**
   String get onDeviceNarrationNotice;
 
-  /// No description provided for @idleActivityTimeoutTitle.
+  /// No description provided for @idlePauseNotificationBody.
   ///
   /// In en, this message translates to:
-  /// **'Twingl Road paused'**
-  String get idleActivityTimeoutTitle;
-
-  /// No description provided for @idleActivityTimeoutBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Your location has stayed within about one mile for 30 minutes without significant movement, so guiding has paused automatically. Turn guiding on again when you are ready to drive.'**
-  String get idleActivityTimeoutBody;
+  /// **'Resting now. Wake me up for the next story.'**
+  String get idlePauseNotificationBody;
 
   /// No description provided for @supportSectionTitle.
   ///

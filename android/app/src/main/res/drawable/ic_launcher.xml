@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notification small icon: flutter_local_notifications loads @drawable/ic_launcher.
+     Mipmap only has adaptive-icon XML; foreground PNGs are reliable here. -->
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/ic_launcher_foreground" />

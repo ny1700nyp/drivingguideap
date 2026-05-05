@@ -311,11 +311,7 @@ class AppLocalizationsJa extends AppLocalizations {
       'オンデバイス AI が有効ではありません。システム設定を確認してください。この端末がオンデバイス AI に対応しているかも確認してください。';
 
   @override
-  String get idleActivityTimeoutTitle => 'Twingl Road を一時停止しました';
-
-  @override
-  String get idleActivityTimeoutBody =>
-      '約30分間、位置が1マイル以内で大きく動かなかったため、ガイドを自動で一時停止しました。運転を再開する際にガイドをオンにしてください。';
+  String get idlePauseNotificationBody => 'いまは休憩中。次のストーリーのとき、起こしてください。';
 
   @override
   String get supportSectionTitle => 'サポート';

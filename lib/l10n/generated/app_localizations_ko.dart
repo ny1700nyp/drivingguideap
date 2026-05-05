@@ -313,11 +313,7 @@ class AppLocalizationsKo extends AppLocalizations {
       '온디바이스 AI가 활성화되어 있지 않습니다. 시스템 설정을 확인해 주세요. 이 기기가 온디바이스 AI를 지원하는지도 확인해 보세요.';
 
   @override
-  String get idleActivityTimeoutTitle => 'Twingl Road 일시정지';
-
-  @override
-  String get idleActivityTimeoutBody =>
-      '약 30분 동안 위치가 1마일 안에서 크게 움직이지 않아 가이드가 자동으로 일시정지되었습니다. 운전을 다시 시작할 때 가이드를 켜 주세요.';
+  String get idlePauseNotificationBody => '지금은 쉬고 있어요. 다음 이야기할 때 다시 불러 주세요.';
 
   @override
   String get supportSectionTitle => '지원';

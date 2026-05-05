@@ -326,11 +326,8 @@ class AppLocalizationsEs extends AppLocalizations {
       'La IA en el dispositivo no está activa. Revisa los ajustes del sistema. Comprueba también si este dispositivo admite IA en el dispositivo.';
 
   @override
-  String get idleActivityTimeoutTitle => 'Twingl Road en pausa';
-
-  @override
-  String get idleActivityTimeoutBody =>
-      'Tu ubicación se ha mantenido dentro de una milla durante unos 30 minutos sin movimiento significativo, así que la guía se ha pausado automáticamente. Vuelve a activarla cuando estés listo para conducir.';
+  String get idlePauseNotificationBody =>
+      'Descansando. Avísame para la próxima historia.';
 
   @override
   String get supportSectionTitle => 'Soporte';

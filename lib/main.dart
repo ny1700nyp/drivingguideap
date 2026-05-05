@@ -17,6 +17,7 @@ import 'features/guide/dynamic_guide_text_service.dart';
 import 'features/location/offline_city_lookup.dart';
 import 'features/location/region_location_service.dart';
 import 'features/location/stationary_pause_monitor.dart';
+import 'features/notifications/idle_pause_notification.dart';
 import 'features/support/remote_markdown_page.dart';
 import 'features/support/support_document_urls.dart';
 import 'l10n/generated/app_localizations.dart';
@@ -459,7 +460,8 @@ class DrivingGuideHomePage extends StatefulWidget {
   State<DrivingGuideHomePage> createState() => _DrivingGuideHomePageState();
 }
 
-class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
+class _DrivingGuideHomePageState extends State<DrivingGuideHomePage>
+    with WidgetsBindingObserver {
   static const _narrativeStylePreferenceKey = 'narrative_style';
   static const _customPersonasPreferenceKey = 'custom_personas_v1';
   static const _maxCustomPersonas = 24;
@@ -504,6 +506,8 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   int _selectedTabIndex = 0;
   int _playbackRunId = 0;
   int _resumeSpeakingIndex = 0;
+  /// After [StationaryPauseMonitor] stops guiding, next [AppLifecycleState.resumed] restarts guiding.
+  bool _autoStartGuidingWhenNextResumed = false;
 
   AppLocalizations get _l10n => AppLocalizations.of(context);
 
@@ -523,6 +527,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _regionSubscription = _locationService.regionChanges.listen(
       (region) => unawaited(_handleRegionChange(region)),
       onError: (Object error) => debugPrint('Location error: $error'),
@@ -543,6 +548,26 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_autoStartGuidingOnAppLaunch());
     });
+    if (!kIsWeb) {
+      unawaited(ensureIdlePauseNotificationsReady());
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state != AppLifecycleState.resumed) {
+      return;
+    }
+    if (!_autoStartGuidingWhenNextResumed || _isMonitoring) {
+      return;
+    }
+    _autoStartGuidingWhenNextResumed = false;
+    if (!mounted) {
+      return;
+    }
+    unawaited(dismissIdlePauseNotification());
+    unawaited(_startMonitoring());
   }
 
   /// Cold start: begin guiding without the confirmation dialog (OS may still
@@ -957,6 +982,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
     if (_isMonitoring) {
       return;
     }
+    _autoStartGuidingWhenNextResumed = false;
 
     try {
       await _ttsService.configure();
@@ -1013,7 +1039,10 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
     }
   }
 
-  Future<void> _stopMonitoring() async {
+  Future<void> _stopMonitoring({bool triggeredByIdleTimeout = false}) async {
+    if (!triggeredByIdleTimeout) {
+      _autoStartGuidingWhenNextResumed = false;
+    }
     _playbackRunId++;
     _stationaryPauseMonitor.stop();
     await _locationService.stop();
@@ -1042,27 +1071,16 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
         HapticFeedback.mediumImpact();
       }
     });
-    await _stopMonitoring();
+    await _stopMonitoring(triggeredByIdleTimeout: true);
     if (!mounted) {
       return;
     }
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        final l10n = AppLocalizations.of(ctx);
-        return AlertDialog(
-          title: Text(l10n.idleActivityTimeoutTitle),
-          content: Text(l10n.idleActivityTimeoutBody),
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: Text(l10n.confirm),
-            ),
-          ],
-        );
-      },
+    final l10n = AppLocalizations.of(context);
+    await showIdlePauseNotification(
+      title: l10n.appTitle,
+      body: l10n.idlePauseNotificationBody,
     );
+    _autoStartGuidingWhenNextResumed = true;
   }
 
   Future<void> _handleRegionChange(RegionSnapshot region) async {
@@ -1526,7 +1544,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
                   _isMonitoring ? null : () => _confirmStartGuiding(context),
               onTogglePlayback: hasNarrative ? _togglePlayback : null,
           onReplay: hasNarrative ? _replayNarrative : null,
-          onPauseGuide: _isMonitoring ? _stopMonitoring : null,
+          onPauseGuide: _isMonitoring ? () => _stopMonitoring() : null,
         ),
           ),
         );
@@ -2112,6 +2130,7 @@ class _DrivingGuideHomePageState extends State<DrivingGuideHomePage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _regionSubscription?.cancel();
     _speakingRangeSubscription?.cancel();
     _stationaryPauseMonitor.stop();

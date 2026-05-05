@@ -321,11 +321,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'On-device AI is not active. Please check system settings. Also confirm whether this device supports on-device AI.';
 
   @override
-  String get idleActivityTimeoutTitle => 'Twingl Road paused';
-
-  @override
-  String get idleActivityTimeoutBody =>
-      'Your location has stayed within about one mile for 30 minutes without significant movement, so guiding has paused automatically. Turn guiding on again when you are ready to drive.';
+  String get idlePauseNotificationBody =>
+      'Resting now. Wake me up for the next story.';
 
   @override
   String get supportSectionTitle => 'Support';
